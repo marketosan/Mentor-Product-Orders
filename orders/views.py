@@ -64,7 +64,7 @@ def add_item(request):
 def edit_item(request, pk):
     item = get_object_or_404(OrderItem.objects.open(), pk=pk)
     form = EditOrderItemForm(request.POST, instance=item)
-    if form.is_valid():
+    if form.is_valid(): 
         form.save()
         return render(request, PANEL, _panel_context())
     return render(request, PANEL, _panel_context(edit_form=form, editing_id=pk), status=422)
