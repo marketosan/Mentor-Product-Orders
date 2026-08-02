@@ -42,6 +42,15 @@
     {% endfor %}
   </form>
 
+  <button type="button" class="mt-2 text-sm text-stone-500 hover:text-stone-900"
+          hx-get="{% url 'new_product' %}"
+          hx-include="#product-search"
+          hx-target="#product-dialog-body"
+          hx-swap="innerHTML"
+          hx-on::after-request="document.getElementById('product-dialog').showModal()">
+    + Add a product that is not in the list
+  </button>
+
   {# ---- Open items ------------------------------------------------------ #}
   <p class="mt-6 text-sm text-stone-500">
     {{ items|length }} open item{{ items|length|pluralize }} waiting to be ordered.

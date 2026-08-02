@@ -1,0 +1,8 @@
+{% comment %}
+  Success reply for the new-product dialog: shut it and hand the product to
+  the quick-add form, so the order being typed carries straight on.
+{% endcomment %}
+<script>
+  document.getElementById("product-dialog").close();
+  selectProduct({{ product.pk }}, "{{ product.name|escapejs }}", "{{ product.unit|escapejs }}");
+</script>

@@ -2,8 +2,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
-from .forms import AddOrderItemForm, EditOrderItemForm
-from .models import OrderItem
+from .forms import AddOrderItemForm, EditOrderItemForm, ProductForm
+from .models import OrderItem, Seller
 from .search import search_products
 
 PANEL = "orders/_panel.html"
@@ -86,3 +86,32 @@ def product_search(request):
     query = request.GET.get("q", "").strip()
     products = search_products(query)
     return render(request, "orders/_product_results.html", {"products": products, "query": query})
+
+
+@login_required
+def new_product(request):
+    """Add a missing product without losing the order being typed.
+
+    Rendered into a dialog. On success the reply is a script that closes the
+    dialog and drops the new product straight into the quick-add form, so the
+    interrupted flow picks up where it left off.
+    """
+    if request.method == "POST":
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            product = form.save(commit=False)
+            product.created_by = request.user
+            product.save()
+            return render(request, "orders/_product_created.html", {"product": product})
+        status = 422
+    else:
+        # Whatever was typed into the search box is almost certainly the name.
+        form = ProductForm(initial={"name": request.GET.get("q", "").strip()})
+        status = 200
+
+    return render(
+        request,
+        "orders/_product_form.html",
+        {"form": form, "sellers": Seller.objects.filter(is_active=True)},
+        status=status,
+    )

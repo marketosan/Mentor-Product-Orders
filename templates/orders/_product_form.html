@@ -1,0 +1,96 @@
+{% comment %}
+  Body of the new-product dialog. Inputs are text-base (16px) and py-3 so
+  phones do not zoom on focus and the targets stay thumb-sized.
+{% endcomment %}
+<form hx-post="{% url 'new_product' %}"
+      hx-target="#product-dialog-body"
+      hx-swap="innerHTML"
+      class="rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
+  {% csrf_token %}
+
+  <h2 class="text-lg font-semibold tracking-tight">New product</h2>
+  <p class="mt-1 text-sm text-stone-500">Adds it to the catalog so anyone can order it.</p>
+
+  {% if not sellers %}
+    <p class="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      There are no sellers yet. An admin needs to add one before products can be created.
+    </p>
+  {% else %}
+
+    {% for error in form.non_field_errors %}
+      <p class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>
+    {% endfor %}
+
+    <div class="mt-4 space-y-4">
+      <div>
+        <label for="p-name" class="block text-sm font-medium">Name</label>
+        <input type="text" name="name" id="p-name" required autocomplete="off"
+               value="{{ form.name.value|default:'' }}"
+               class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+        {% for error in form.name.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div>
+        <label for="p-seller" class="block text-sm font-medium">Seller</label>
+        <select name="seller" id="p-seller" required
+                class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+          <option value="">Choose a seller…</option>
+          {% for seller in sellers %}
+            <option value="{{ seller.pk }}"
+              {% if form.seller.value|stringformat:'s' == seller.pk|stringformat:'s' %}selected{% endif %}>
+              {{ seller.name }}
+            </option>
+          {% endfor %}
+        </select>
+        {% for error in form.seller.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      <div class="flex gap-3">
+        <div class="w-1/2">
+          <label for="p-unit" class="block text-sm font-medium">Sold by</label>
+          <select name="unit" id="p-unit" required
+                  class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+            {% for value, label in form.fields.unit.choices %}
+              {% if value %}
+                <option value="{{ value }}" {% if form.unit.value == value %}selected{% endif %}>{{ label }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          {% for error in form.unit.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+
+        <div class="w-1/2">
+          <label for="p-price" class="block text-sm font-medium">Price per unit</label>
+          <div class="relative mt-1">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-500">&euro;</span>
+            <input type="number" name="unit_price" id="p-price" step="0.01" min="0" required
+                   inputmode="decimal" value="{{ form.unit_price.value|default:'' }}"
+                   class="w-full rounded-md border border-stone-300 py-3 pl-7 pr-3 text-base focus:border-stone-900 focus:outline-none">
+          </div>
+          {% for error in form.unit_price.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="mt-6 flex gap-3">
+    <button type="button" onclick="document.getElementById('product-dialog').close()"
+            class="flex-1 rounded-md border border-stone-300 px-4 py-3 text-base hover:bg-stone-50">
+      Cancel
+    </button>
+    {% if sellers %}
+      <button type="submit"
+              class="flex-1 rounded-md bg-stone-900 px-4 py-3 text-base text-white hover:bg-stone-700">
+        Add product
+      </button>
+    {% endif %}
+  </div>
+</form>

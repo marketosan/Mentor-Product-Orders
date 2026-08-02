@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import OrderItem, Product
+from .models import OrderItem, Product, Seller
 
 
 class UrgentCheckboxMixin:
@@ -78,3 +78,38 @@ class EditOrderItemForm(UrgentCheckboxMixin, forms.ModelForm):
         if commit:
             item.save()
         return item
+
+
+class ProductForm(forms.ModelForm):
+    """Lets an employee add a product mid-order when it is missing from the
+    catalog. Sellers are chosen from the existing list -- only admins create
+    those.
+    """
+
+    class Meta:
+        model = Product
+        fields = ["name", "seller", "unit", "unit_price"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["seller"].queryset = Seller.objects.filter(is_active=True)
+
+    def clean_unit_price(self):
+        price = self.cleaned_data["unit_price"]
+        if price <= 0:
+            raise forms.ValidationError("Price must be more than zero.")
+        return price
+
+    def clean(self):
+        cleaned = super().clean()
+        name, seller = cleaned.get("name"), cleaned.get("seller")
+        # Case-insensitive on purpose: "Oat milk" and "oat milk" from the same
+        # seller are the same thing to a shop, even though the database
+        # constraint would allow both.
+        if name and seller:
+            clash = Product.objects.filter(seller=seller, name__iexact=name.strip())
+            if clash.exists():
+                raise forms.ValidationError(
+                    f"{seller.name} already has a product called “{clash.first().name}”."
+                )
+        return cleaned

@@ -10,7 +10,16 @@
         </span>
       </button>
     {% empty %}
-      <p class="px-3 py-2 text-sm text-stone-500">No product matches “{{ query }}”.</p>
+      <p class="px-3 pt-2 text-sm text-stone-500">No product matches “{{ query }}”.</p>
+      <button type="button"
+              class="block w-full px-3 pb-2 pt-1 text-left text-sm font-medium text-stone-900 hover:bg-stone-100"
+              hx-get="{% url 'new_product' %}"
+              hx-include="#product-search"
+              hx-target="#product-dialog-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('product-dialog').showModal()">
+        + Add “{{ query }}” as a new product
+      </button>
     {% endfor %}
   </div>
 {% endif %}
