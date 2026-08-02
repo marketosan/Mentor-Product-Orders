@@ -1,14 +1,16 @@
-{% for product in products %}
-  <button type="button"
-          onclick="selectProduct({{ product.pk }}, '{{ product.name|escapejs }}')"
-          class="block w-full px-3 py-2 text-left hover:bg-stone-100">
-    <span class="font-medium">{{ product.name }}</span>
-    <span class="text-sm text-stone-500">
-      &middot; {{ product.seller.name }} &middot; &euro;{{ product.unit_price|floatformat:2 }}/{{ product.unit }}
-    </span>
-  </button>
-{% empty %}
-  {% if query %}
-    <p class="px-3 py-2 text-sm text-stone-500">No product matches “{{ query }}”.</p>
-  {% endif %}
-{% endfor %}
+{% if query %}
+  <div class="overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
+    {% for product in products %}
+      <button type="button"
+              class="search-result block w-full px-3 py-2 text-left hover:bg-stone-100"
+              onclick="selectProduct({{ product.pk }}, '{{ product.name|escapejs }}')">
+        <span class="font-medium">{{ product.name }}</span>
+        <span class="text-sm text-stone-500">
+          &middot; {{ product.seller.name }} &middot; &euro;{{ product.unit_price|floatformat:2 }}/{{ product.unit }}
+        </span>
+      </button>
+    {% empty %}
+      <p class="px-3 py-2 text-sm text-stone-500">No product matches “{{ query }}”.</p>
+    {% endfor %}
+  </div>
+{% endif %}

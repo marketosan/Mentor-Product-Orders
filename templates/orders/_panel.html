@@ -12,13 +12,14 @@
       <div class="relative grow min-w-56">
         <input type="text" name="q" id="product-search" autocomplete="off" placeholder="Search a product…"
                hx-get="{% url 'product_search' %}"
-               hx-trigger="input changed delay:200ms"
+               hx-trigger="input changed delay:150ms"
                hx-target="#product-results"
                oninput="document.getElementById('product-id').value = ''"
                class="w-full rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
         <input type="hidden" name="product" id="product-id">
-        <div id="product-results"
-             class="absolute z-10 mt-1 w-full rounded-md border border-stone-200 bg-white shadow-lg empty:hidden"></div>
+        {# Positioning only -- the styled dropdown comes from the server, so an
+           empty response leaves nothing visible behind. #}
+        <div id="product-results" class="absolute z-10 mt-1 w-full"></div>
       </div>
 
       <input type="number" name="quantity" id="quantity" step="0.001" min="0" placeholder="Qty"
