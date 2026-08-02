@@ -16,14 +16,19 @@
 
 {% if user.is_authenticated %}
 <header class="border-b-2 border-[#71a07c] bg-white">
-  {# Full width, unlike <main>, so the wordmark and account sit at the screen edges. #}
-  <div class="flex items-center justify-between px-4 py-3 sm:px-6">
+  {% comment %}
+    Equal flexible columns either side of an auto-width middle keep the
+    wordmark centred on the screen, not merely centred in the space the
+    account details happen to leave over.
+  {% endcomment %}
+  <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3 sm:px-6">
+    <span aria-hidden="true"></span>
     {% comment %}
       #71a07c measures 2.99:1 on white, below the 3:1 floor even for large
       text, so the wordmark takes a darker sibling of the same hue at 5.42:1.
     {% endcomment %}
     <a href="{% url 'order_list' %}" class="text-2xl font-bold tracking-tight text-[#4a7355]">Mentor</a>
-    <div class="flex items-center gap-3 text-sm">
+    <div class="flex min-w-0 items-center justify-end gap-3 text-sm">
       <span class="text-stone-500">
         {{ user.username }}{% if user.is_shop_admin %} &middot; admin{% endif %}
       </span>
