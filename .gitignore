@@ -32,9 +32,18 @@ venv/
 .mypy_cache/
 .pytest_cache/
 
+# Django
+*.sqlite3
+staticfiles/
+media/
+
 # Logs
 *.log
 logs/
+
+# Claude Code / local tooling
+.claude/
+.mcp.json
 
 # Misc
 *.tmp
