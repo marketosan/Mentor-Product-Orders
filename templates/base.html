@@ -19,13 +19,9 @@
   <div class="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
     {% comment %}
       #71a07c measures 2.99:1 on white, below the 3:1 floor even for large
-      text, so it appears as the mark while the wordmark takes a darker
-      sibling of the same hue at 5.42:1.
+      text, so the wordmark takes a darker sibling of the same hue at 5.42:1.
     {% endcomment %}
-    <a href="{% url 'order_list' %}" class="flex items-center gap-2 text-2xl font-bold tracking-tight text-[#4a7355]">
-      <span class="h-2.5 w-2.5 rounded-full bg-[#71a07c]" aria-hidden="true"></span>
-      Mentor
-    </a>
+    <a href="{% url 'order_list' %}" class="text-2xl font-bold tracking-tight text-[#4a7355]">Mentor</a>
     <div class="flex items-center gap-3 text-sm">
       <span class="text-stone-500">
         {{ user.username }}{% if user.is_shop_admin %} &middot; admin{% endif %}
