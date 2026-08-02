@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Order list &middot; Mentor{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold tracking-tight mb-4">Order list</h1>
+
+{% include "orders/_panel.html" %}
+
+<script>
+  // Called from the live-search results: lock in the chosen product, then jump
+  // straight to quantity so an item can be added without touching the mouse.
+  function selectProduct(id, name) {
+    document.getElementById("product-id").value = id;
+    document.getElementById("product-search").value = name;
+    document.getElementById("product-results").innerHTML = "";
+    document.getElementById("quantity").focus();
+  }
+</script>
+{% endblock %}

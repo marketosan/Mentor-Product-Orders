@@ -1,0 +1,44 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Mentor{% endblock %}</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+</head>
+<body class="min-h-screen bg-stone-100 text-stone-900">
+
+{% if user.is_authenticated %}
+<header class="bg-white border-b border-stone-200">
+  <div class="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between">
+    <a href="{% url 'order_list' %}" class="font-semibold tracking-tight">Mentor</a>
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-stone-500">
+        {{ user.username }}{% if user.is_shop_admin %} &middot; admin{% endif %}
+      </span>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="text-stone-500 hover:text-stone-900">Log out</button>
+      </form>
+    </div>
+  </div>
+</header>
+{% endif %}
+
+<main class="mx-auto max-w-4xl px-4 py-8">
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+  // htmx ignores 4xx responses by default. The server answers an invalid form
+  // with 422 and the re-rendered form, so opt that one status back into swapping.
+  document.body.addEventListener("htmx:beforeSwap", function (event) {
+    if (event.detail.xhr.status === 422) {
+      event.detail.shouldSwap = true;
+      event.detail.isError = false;
+    }
+  });
+</script>
+</body>
+</html>

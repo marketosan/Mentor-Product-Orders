@@ -1,0 +1,123 @@
+<div id="panel">
+
+  {# ---- Quick add ------------------------------------------------------- #}
+  <form hx-post="{% url 'add_item' %}"
+        hx-target="#panel"
+        hx-swap="outerHTML"
+        class="bg-white rounded-lg border border-stone-200 p-4">
+    {% csrf_token %}
+
+    <div class="flex flex-wrap items-start gap-3">
+      {# Product: live search, resolved into a hidden id #}
+      <div class="relative grow min-w-56">
+        <input type="text" name="q" id="product-search" autocomplete="off" placeholder="Search a product…"
+               hx-get="{% url 'product_search' %}"
+               hx-trigger="input changed delay:200ms"
+               hx-target="#product-results"
+               oninput="document.getElementById('product-id').value = ''"
+               class="w-full rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
+        <input type="hidden" name="product" id="product-id">
+        <div id="product-results"
+             class="absolute z-10 mt-1 w-full rounded-md border border-stone-200 bg-white shadow-lg empty:hidden"></div>
+      </div>
+
+      <input type="number" name="quantity" id="quantity" step="0.001" min="0" placeholder="Qty"
+             class="w-24 rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
+
+      <select name="urgency"
+              class="rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
+        <option value="low">Low</option>
+        <option value="high">Urgent</option>
+      </select>
+
+      <button type="submit"
+              class="rounded-md bg-stone-900 px-4 py-2 text-white hover:bg-stone-700">Add</button>
+    </div>
+
+    {% for field_errors in add_form.errors.values %}
+      {% for error in field_errors %}
+        <p class="mt-2 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    {% endfor %}
+  </form>
+
+  {# ---- Open items ------------------------------------------------------ #}
+  <p class="mt-6 text-sm text-stone-500">
+    {{ items|length }} open item{{ items|length|pluralize }} waiting to be ordered.
+  </p>
+
+  <div class="mt-2 bg-white rounded-lg border border-stone-200 divide-y divide-stone-200">
+    {% for item in items %}
+      {% if item.pk == editing_id %}
+
+        {# --- row in edit mode --- #}
+        <form hx-post="{% url 'edit_item' item.pk %}"
+              hx-target="#panel"
+              hx-swap="outerHTML"
+              class="flex flex-wrap items-center gap-3 px-4 py-3 bg-stone-50">
+          {% csrf_token %}
+          <span class="grow font-medium">{{ item.product.name }}</span>
+
+          <input type="number" name="quantity" step="0.001" min="0" value="{{ item.quantity|floatformat:'-3' }}"
+                 autofocus
+                 class="w-24 rounded-md border border-stone-300 px-3 py-1.5 focus:border-stone-900 focus:outline-none">
+
+          <select name="urgency"
+                  class="rounded-md border border-stone-300 px-3 py-1.5 focus:border-stone-900 focus:outline-none">
+            <option value="low" {% if item.urgency == 'low' %}selected{% endif %}>Low</option>
+            <option value="high" {% if item.urgency == 'high' %}selected{% endif %}>Urgent</option>
+          </select>
+
+          <button type="submit" class="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700">Save</button>
+          <button type="button" hx-get="{% url 'panel' %}" hx-target="#panel" hx-swap="outerHTML"
+                  class="text-sm text-stone-500 hover:text-stone-900">Cancel</button>
+
+          {% for field_errors in edit_form.errors.values %}
+            {% for error in field_errors %}
+              <p class="w-full text-sm text-red-600">{{ error }}</p>
+            {% endfor %}
+          {% endfor %}
+        </form>
+
+      {% else %}
+
+        {# --- row in display mode --- #}
+        <div class="group flex items-center justify-between gap-4 px-4 py-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-medium truncate">{{ item.product.name }}</span>
+              {% if item.urgency == "high" %}
+                <span class="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">urgent</span>
+              {% endif %}
+            </div>
+            <div class="text-sm text-stone-500 truncate">
+              {{ item.product.seller.name }} &middot; {{ item.requested_by.username }} &middot; {{ item.created_at|date:"j M, H:i" }}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 shrink-0">
+            <div class="text-right">
+              <div class="font-medium">{{ item.quantity|floatformat:"-3" }} {{ item.product.unit }}</div>
+              <div class="text-sm text-stone-500">&euro;{{ item.line_total|floatformat:2 }}</div>
+            </div>
+            <div class="flex gap-2 text-sm">
+              <button hx-get="{% url 'panel' %}?editing={{ item.pk }}" hx-target="#panel" hx-swap="outerHTML"
+                      class="text-stone-500 hover:text-stone-900">Edit</button>
+              <button hx-post="{% url 'delete_item' item.pk %}" hx-target="#panel" hx-swap="outerHTML"
+                      hx-confirm="Remove {{ item.product.name }} from the list?"
+                      class="text-stone-500 hover:text-red-600">Delete</button>
+            </div>
+          </div>
+        </div>
+
+      {% endif %}
+    {% empty %}
+      <p class="px-4 py-8 text-center text-sm text-stone-500">Nothing on the list right now.</p>
+    {% endfor %}
+  </div>
+
+  {% if just_added %}
+    {# Put the cursor back in the search box for fast back-to-back entry. #}
+    <script>document.getElementById("product-search").focus();</script>
+  {% endif %}
+</div>
