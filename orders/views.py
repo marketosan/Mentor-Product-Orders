@@ -3,7 +3,8 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
 from .forms import AddOrderItemForm, EditOrderItemForm
-from .models import OrderItem, Product
+from .models import OrderItem
+from .search import search_products
 
 PANEL = "orders/_panel.html"
 
@@ -83,12 +84,5 @@ def delete_item(request, pk):
 @login_required
 def product_search(request):
     query = request.GET.get("q", "").strip()
-    products = []
-    if query:
-        products = (
-            Product.objects.filter(
-                is_active=True, seller__is_active=True, name__icontains=query
-            )
-            .select_related("seller")[:8]
-        )
+    products = search_products(query)
     return render(request, "orders/_product_results.html", {"products": products, "query": query})
