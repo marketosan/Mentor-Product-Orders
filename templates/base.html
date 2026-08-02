@@ -16,7 +16,8 @@
 
 {% if user.is_authenticated %}
 <header class="border-b-2 border-[#71a07c] bg-white">
-  <div class="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+  {# Full width, unlike <main>, so the wordmark and account sit at the screen edges. #}
+  <div class="flex items-center justify-between px-4 py-3 sm:px-6">
     {% comment %}
       #71a07c measures 2.99:1 on white, below the 3:1 floor even for large
       text, so the wordmark takes a darker sibling of the same hue at 5.42:1.
