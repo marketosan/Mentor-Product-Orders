@@ -1,3 +1,5 @@
+import json
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
@@ -7,6 +9,16 @@ from .models import OrderItem, Seller
 from .search import search_products
 
 PANEL = "orders/_panel.html"
+
+
+def _toast(response, message):
+    """Confirm an action to the user without putting it in the swapped markup.
+
+    htmx turns the HX-Trigger header into a client-side event, which base.html
+    renders as a short-lived message.
+    """
+    response["HX-Trigger"] = json.dumps({"toast": {"message": message}})
+    return response
 
 
 def _panel_context(*, add_form=None, edit_form=None, editing_id=None, just_added=False):
@@ -74,8 +86,11 @@ def add_item(request):
         response["HX-Reswap"] = "innerHTML"
         return response
 
-    form.save(requested_by=request.user)
-    return render(request, PANEL, _panel_context(just_added=True))
+    item = form.save(requested_by=request.user)
+    return _toast(
+        render(request, PANEL, _panel_context(just_added=True)),
+        f"{item.product.name} added to the list",
+    )
 
 
 @login_required
@@ -85,7 +100,10 @@ def edit_item(request, pk):
     form = EditOrderItemForm(request.POST, instance=item)
     if form.is_valid():
         form.save()
-        return render(request, PANEL, _panel_context())
+        return _toast(
+            render(request, PANEL, _panel_context()),
+            f"{item.product.name} updated",
+        )
     return render(request, PANEL, _panel_context(edit_form=form, editing_id=pk), status=422)
 
 
@@ -96,8 +114,12 @@ def delete_item(request, pk):
     there is no history to preserve.
     """
     item = get_object_or_404(OrderItem.objects.open(), pk=pk)
+    name = item.product.name
     item.delete()
-    return render(request, PANEL, _panel_context())
+    return _toast(
+        render(request, PANEL, _panel_context()),
+        f"{name} removed from the list",
+    )
 
 
 @login_required
@@ -121,7 +143,10 @@ def new_product(request):
             product = form.save(commit=False)
             product.created_by = request.user
             product.save()
-            return render(request, "orders/_product_created.html", {"product": product})
+            return _toast(
+                render(request, "orders/_product_created.html", {"product": product}),
+                f"{product.name} added to the catalog",
+            )
         status = 422
     else:
         # Whatever was typed into the search box is almost certainly the name.

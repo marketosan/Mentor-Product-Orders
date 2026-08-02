@@ -35,6 +35,45 @@
   {% block content %}{% endblock %}
 </main>
 
+{% comment %}
+  Confirmations of what just happened. The server names the action with an
+  HX-Trigger header, so nothing about it has to live in the swapped markup.
+{% endcomment %}
+<div id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<style>
+  /* Plain CSS: these elements are built at runtime, where a CDN Tailwind
+     build has no markup to generate classes from. */
+  #toasts {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 1rem;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    padding-inline: 1rem;
+    pointer-events: none;
+  }
+  .toast {
+    max-width: 100%;
+    border-radius: 9999px;
+    background: #1c1917;
+    padding: .55rem 1.1rem;
+    font-size: .875rem;
+    color: #fafaf9;
+    box-shadow: 0 8px 24px rgb(0 0 0 / .18);
+    opacity: 0;
+    transform: translateY(.5rem);
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast[data-visible="true"] { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) {
+    .toast { transition: none; }
+  }
+</style>
+
 <script>
   // htmx ignores 4xx responses by default. The server answers an invalid form
   // with 422 and the re-rendered form, so opt that one status back into swapping.
@@ -43,6 +82,22 @@
       event.detail.shouldSwap = true;
       event.detail.isError = false;
     }
+  });
+
+  // Fired by the HX-Trigger header the views attach to a successful action.
+  document.body.addEventListener("toast", function (event) {
+    const host = document.getElementById("toasts");
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = event.detail.message;
+    host.appendChild(toast);
+
+    requestAnimationFrame(() => toast.setAttribute("data-visible", "true"));
+    setTimeout(function () {
+      toast.removeAttribute("data-visible");
+      toast.addEventListener("transitionend", () => toast.remove(), { once: true });
+      setTimeout(() => toast.remove(), 500);   // fallback if the transition never fires
+    }, 2800);
   });
 </script>
 </body>
