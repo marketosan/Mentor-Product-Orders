@@ -21,6 +21,7 @@
 
   const search = () => document.getElementById("product-search");
   const results = () => document.getElementById("product-results");
+  const quantity = () => document.getElementById("quantity");
   const options = () => Array.from(document.querySelectorAll("#product-results .search-result"));
 
   function highlight(index) {
@@ -37,19 +38,23 @@
   }
 
   // Lock in a product, then jump to quantity so an item can be added without
-  // ever touching the mouse.
-  window.selectProduct = function (id, name) {
+  // ever touching the mouse. The placeholder picks up the product's unit, so
+  // it is obvious whether the shop buys it by the kg, the litre or the box.
+  window.selectProduct = function (id, name, unit) {
     document.getElementById("product-id").value = id;
     search().value = name;
+    quantity().placeholder = "Qty (" + unit + ")";
     close();
-    document.getElementById("quantity").focus();
+    quantity().focus();
   };
 
-  // Any edit drops the previously chosen product. Emptying the box closes the
-  // list straight away rather than waiting on the debounced request.
+  // Any edit drops the previously chosen product, so the unit hint goes with
+  // it. Emptying the box closes the list straight away rather than waiting on
+  // the debounced request.
   document.addEventListener("input", function (event) {
     if (event.target.id !== "product-search") return;
     document.getElementById("product-id").value = "";
+    quantity().placeholder = "Qty";
     if (!event.target.value.trim()) close();
   });
 

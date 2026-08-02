@@ -3,7 +3,7 @@
     {% for product in products %}
       <button type="button" role="option" aria-selected="false"
               class="search-result block w-full px-3 py-2 text-left hover:bg-stone-100"
-              onclick="selectProduct({{ product.pk }}, '{{ product.name|escapejs }}')">
+              onclick="selectProduct({{ product.pk }}, '{{ product.name|escapejs }}', '{{ product.unit|escapejs }}')">
         <span class="font-medium">{{ product.name }}</span>
         <span class="text-sm text-stone-500">
           &middot; {{ product.seller.name }} &middot; &euro;{{ product.unit_price|floatformat:2 }}/{{ product.unit }}

@@ -23,13 +23,13 @@
       </div>
 
       <input type="number" name="quantity" id="quantity" step="0.001" min="0" placeholder="Qty"
-             class="w-24 rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
+             class="w-28 rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
 
-      <select name="urgency"
-              class="rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
-        <option value="low">Low</option>
-        <option value="high">Urgent</option>
-      </select>
+      <label class="flex cursor-pointer items-center gap-2 py-2 text-sm select-none">
+        <input type="checkbox" name="urgent" value="1"
+               class="h-4 w-4 rounded border-stone-300 accent-stone-900">
+        Urgent
+      </label>
 
       <button type="submit"
               class="rounded-md bg-stone-900 px-4 py-2 text-white hover:bg-stone-700">Add</button>
@@ -61,13 +61,14 @@
 
           <input type="number" name="quantity" step="0.001" min="0" value="{{ item.quantity|floatformat:'-3' }}"
                  autofocus
-                 class="w-24 rounded-md border border-stone-300 px-3 py-1.5 focus:border-stone-900 focus:outline-none">
+                 class="w-28 rounded-md border border-stone-300 px-3 py-1.5 focus:border-stone-900 focus:outline-none">
+          <span class="text-sm text-stone-500">{{ item.product.unit }}</span>
 
-          <select name="urgency"
-                  class="rounded-md border border-stone-300 px-3 py-1.5 focus:border-stone-900 focus:outline-none">
-            <option value="low" {% if item.urgency == 'low' %}selected{% endif %}>Low</option>
-            <option value="high" {% if item.urgency == 'high' %}selected{% endif %}>Urgent</option>
-          </select>
+          <label class="flex cursor-pointer items-center gap-2 text-sm select-none">
+            <input type="checkbox" name="urgent" value="1" {% if item.urgency == 'high' %}checked{% endif %}
+                   class="h-4 w-4 rounded border-stone-300 accent-stone-900">
+            Urgent
+          </label>
 
           <button type="submit" class="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700">Save</button>
           <button type="button" hx-get="{% url 'panel' %}" hx-target="#panel" hx-swap="outerHTML"
