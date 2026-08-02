@@ -7,7 +7,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
 </head>
-<body class="min-h-screen bg-stone-100 text-stone-900">
+{% comment %}
+  Buttons that post from outside a <form> -- delete, for one -- have no CSRF
+  token of their own, so every htmx request carries it as a header instead.
+{% endcomment %}
+<body class="min-h-screen bg-stone-100 text-stone-900"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
 {% if user.is_authenticated %}
 <header class="bg-white border-b border-stone-200">

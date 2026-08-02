@@ -15,6 +15,7 @@
                hx-get="{% url 'product_search' %}"
                hx-trigger="input delay:150ms"
                hx-target="#product-results"
+               hx-swap="innerHTML"
                class="w-full rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
         <input type="hidden" name="product" id="product-id">
         {# Positioning only; the styled dropdown itself comes from the server. #}
