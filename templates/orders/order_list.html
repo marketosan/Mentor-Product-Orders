@@ -7,26 +7,32 @@
 
 {% include "orders/_panel.html" %}
 
+<style>
+  /* Plain CSS on purpose: this state is only ever applied at runtime, and a
+     CDN Tailwind build generates styles from the classes it finds in markup. */
+  #product-results .search-result[aria-selected="true"] { background-color: #e7e5e4; }
+</style>
+
 <script>
 // Drives the product dropdown. Lives outside #panel so it survives the htmx
 // swaps, and looks elements up on each use since the panel replaces them.
 (function () {
-  const HIGHLIGHT = "bg-stone-100";
   let active = -1;
 
   const search = () => document.getElementById("product-search");
   const results = () => document.getElementById("product-results");
-  const options = () => Array.from(results().querySelectorAll(".search-result"));
+  const options = () => Array.from(document.querySelectorAll("#product-results .search-result"));
 
   function highlight(index) {
     const opts = options();
     active = opts.length ? (index + opts.length) % opts.length : -1;
-    opts.forEach((el, i) => el.classList.toggle(HIGHLIGHT, i === active));
+    opts.forEach((el, i) => el.setAttribute("aria-selected", i === active));
     if (opts[active]) opts[active].scrollIntoView({ block: "nearest" });
   }
 
   function close() {
-    results().innerHTML = "";
+    const box = results();
+    if (box) box.innerHTML = "";
     active = -1;
   }
 
@@ -39,13 +45,29 @@
     document.getElementById("quantity").focus();
   };
 
+  // Any edit drops the previously chosen product. Emptying the box closes the
+  // list straight away rather than waiting on the debounced request.
+  document.addEventListener("input", function (event) {
+    if (event.target.id !== "product-search") return;
+    document.getElementById("product-id").value = "";
+    if (!event.target.value.trim()) close();
+  });
+
   // Fresh results arrive pre-highlighted, so Enter takes the best match.
   document.body.addEventListener("htmx:afterSwap", function (event) {
     if (event.target.id === "product-results") highlight(0);
   });
 
   document.addEventListener("keydown", function (event) {
-    if (document.activeElement !== search() || !options().length) return;
+    if (document.activeElement !== search()) return;
+
+    if (event.key === "Escape") {
+      close();
+      return;
+    }
+
+    const opts = options();
+    if (!opts.length) return;
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -56,9 +78,7 @@
     } else if (event.key === "Enter" && active >= 0) {
       // Pick the highlighted product instead of submitting a blank form.
       event.preventDefault();
-      options()[active].click();
-    } else if (event.key === "Escape") {
-      close();
+      opts[active].click();
     }
   });
 
