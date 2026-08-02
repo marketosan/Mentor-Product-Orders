@@ -3,6 +3,6 @@
   the quick-add form, so the order being typed carries straight on.
 {% endcomment %}
 <script>
-  document.getElementById("product-dialog").close();
+  document.getElementById("modal").close();
   selectProduct({{ product.pk }}, "{{ product.name|escapejs }}", "{{ product.unit|escapejs }}");
 </script>

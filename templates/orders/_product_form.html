@@ -3,7 +3,7 @@
   phones do not zoom on focus and the targets stay thumb-sized.
 {% endcomment %}
 <form hx-post="{% url 'new_product' %}"
-      hx-target="#product-dialog-body"
+      hx-target="#modal-body"
       hx-swap="innerHTML"
       class="rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
   {% csrf_token %}
@@ -51,7 +51,7 @@
 
       <div class="flex gap-3">
         <div class="w-1/2">
-          <label for="p-unit" class="block text-sm font-medium">Sold by</label>
+          <label for="p-unit" class="block text-sm font-medium">Unit of Measurement</label>
           <select name="unit" id="p-unit" required
                   class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
             {% for value, label in form.fields.unit.choices %}
@@ -82,7 +82,7 @@
   {% endif %}
 
   <div class="mt-6 flex gap-3">
-    <button type="button" onclick="document.getElementById('product-dialog').close()"
+    <button type="button" onclick="document.getElementById('modal').close()"
             class="flex-1 rounded-md border border-stone-300 px-4 py-3 text-base hover:bg-stone-50">
       Cancel
     </button>

@@ -53,10 +53,29 @@ def panel(request):
 @require_POST
 def add_item(request):
     form = AddOrderItemForm(request.POST)
-    if form.is_valid():
-        form.save(requested_by=request.user)
-        return render(request, PANEL, _panel_context(just_added=True))
-    return render(request, PANEL, _panel_context(add_form=form), status=422)
+    if not form.is_valid():
+        return render(request, PANEL, _panel_context(add_form=form), status=422)
+
+    existing = (
+        OrderItem.objects.open()
+        .filter(product=form.cleaned_data["product"])
+        .select_related("product", "requested_by")
+        .first()
+    )
+    if existing:
+        # Warn rather than silently duplicating or auto-merging quantities.
+        # This reply goes to the modal, not to the panel the form aims at.
+        response = render(
+            request,
+            "orders/_duplicate_warning.html",
+            {"existing": existing, "attempted_quantity": form.cleaned_data["quantity"]},
+        )
+        response["HX-Retarget"] = "#modal-body"
+        response["HX-Reswap"] = "innerHTML"
+        return response
+
+    form.save(requested_by=request.user)
+    return render(request, PANEL, _panel_context(just_added=True))
 
 
 @login_required

@@ -1,0 +1,54 @@
+{% comment %}
+  Shown when someone adds a product that is already open on the list. Warns
+  rather than silently duplicating or auto-merging, and offers to correct the
+  existing quantity instead.
+{% endcomment %}
+<div class="rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
+
+  <h2 class="text-lg font-semibold tracking-tight">Already on the list</h2>
+  <p class="mt-2 text-sm text-stone-600">
+    <span class="font-medium text-stone-900">{{ existing.product.name }}</span> —
+    {{ existing.quantity|floatformat:"-3" }} {{ existing.product.unit }}
+    requested by {{ existing.requested_by.username }}, {{ existing.created_at|timesince }} ago.
+  </p>
+  <p class="mt-1 text-sm text-stone-500">
+    You were adding {{ attempted_quantity|floatformat:"-3" }} {{ existing.product.unit }}.
+    Update the quantity below instead of listing it twice.
+  </p>
+
+  <form hx-post="{% url 'edit_item' existing.pk %}"
+        hx-target="#panel"
+        hx-swap="outerHTML"
+        hx-on::after-request="if (event.detail.successful) document.getElementById('modal').close()"
+        class="mt-4">
+    {% csrf_token %}
+
+    <label for="dup-quantity" class="block text-sm font-medium">Quantity</label>
+    <div class="mt-1 flex items-center gap-2">
+      <input type="number" name="quantity" id="dup-quantity" step="0.001" min="0" required
+             inputmode="decimal" value="{{ existing.quantity|floatformat:'-3' }}"
+             class="w-32 rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+      <span class="text-sm text-stone-500">{{ existing.product.unit }}</span>
+    </div>
+
+    <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm select-none">
+      <input type="checkbox" name="urgent" value="1"
+             {% if existing.urgency == "high" %}checked{% endif %}
+             class="h-4 w-4 rounded border-stone-300 accent-stone-900">
+      Urgent
+    </label>
+
+    <div class="mt-6 flex gap-3">
+      <button type="button" onclick="document.getElementById('modal').close()"
+              class="flex-1 rounded-md border border-stone-300 px-4 py-3 text-base hover:bg-stone-50">
+        Cancel
+      </button>
+      <button type="submit"
+              class="flex-1 rounded-md bg-stone-900 px-4 py-3 text-base text-white hover:bg-stone-700">
+        Update quantity
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>document.getElementById("modal").showModal();</script>
