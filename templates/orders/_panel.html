@@ -16,23 +16,23 @@
                hx-trigger="input delay:150ms"
                hx-target="#product-results"
                hx-swap="innerHTML"
-               class="w-full rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
+               class="w-full rounded-md border border-stone-300 px-3 py-2 focus:border-[#71a07c] focus:outline-none">
         <input type="hidden" name="product" id="product-id">
         {# Positioning only; the styled dropdown itself comes from the server. #}
         <div id="product-results" class="absolute z-10 mt-1 w-full"></div>
       </div>
 
       <input type="number" name="quantity" id="quantity" step="0.001" min="0" placeholder="Qty"
-             class="w-28 rounded-md border border-stone-300 px-3 py-2 focus:border-stone-900 focus:outline-none">
+             class="w-28 rounded-md border border-stone-300 px-3 py-2 focus:border-[#71a07c] focus:outline-none">
 
       <label class="flex cursor-pointer items-center gap-2 py-2 text-sm select-none">
         <input type="checkbox" name="urgent" value="1"
-               class="h-4 w-4 rounded border-stone-300 accent-stone-900">
+               class="h-4 w-4 rounded border-stone-300 accent-[#71a07c]">
         Urgent
       </label>
 
       <button type="submit"
-              class="rounded-md bg-stone-900 px-4 py-2 text-white hover:bg-stone-700">Add</button>
+              class="rounded-md bg-[#4a7355] px-4 py-2 text-white hover:bg-[#3d6047]">Add</button>
     </div>
 
     {% for field_errors in add_form.errors.values %}
@@ -53,7 +53,7 @@
 
   {# ---- Open items ------------------------------------------------------ #}
   <div class="mt-8 flex items-baseline justify-between gap-3">
-    <h2 class="font-semibold tracking-tight text-stone-900">Waiting to be ordered</h2>
+    <h2 class="font-semibold tracking-tight text-stone-900">Products to be ordered</h2>
     <span class="text-sm text-stone-500">
       {{ items|length }} item{{ items|length|pluralize }}
     </span>
@@ -73,16 +73,16 @@
 
           <input type="number" name="quantity" step="0.001" min="0" value="{{ item.quantity|floatformat:'-3' }}"
                  autofocus
-                 class="w-28 rounded-md border border-stone-300 px-3 py-1.5 focus:border-stone-900 focus:outline-none">
+                 class="w-28 rounded-md border border-stone-300 px-3 py-1.5 focus:border-[#71a07c] focus:outline-none">
           <span class="text-sm text-stone-500">{{ item.product.unit }}</span>
 
           <label class="flex cursor-pointer items-center gap-2 text-sm select-none">
             <input type="checkbox" name="urgent" value="1" {% if item.urgency == 'high' %}checked{% endif %}
-                   class="h-4 w-4 rounded border-stone-300 accent-stone-900">
+                   class="h-4 w-4 rounded border-stone-300 accent-[#71a07c]">
             Urgent
           </label>
 
-          <button type="submit" class="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700">Save</button>
+          <button type="submit" class="rounded-md bg-[#4a7355] px-3 py-1.5 text-sm text-white hover:bg-[#3d6047]">Save</button>
           <button type="button" hx-get="{% url 'panel' %}" hx-target="#panel" hx-swap="outerHTML"
                   class="text-sm text-stone-500 hover:text-stone-900">Cancel</button>
 

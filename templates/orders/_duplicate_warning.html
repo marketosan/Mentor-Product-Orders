@@ -27,14 +27,14 @@
     <div class="mt-1 flex items-center gap-2">
       <input type="number" name="quantity" id="dup-quantity" step="0.001" min="0" required
              inputmode="decimal" value="{{ existing.quantity|floatformat:'-3' }}"
-             class="w-32 rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+             class="w-32 rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
       <span class="text-sm text-stone-500">{{ existing.product.unit }}</span>
     </div>
 
     <label class="mt-3 flex cursor-pointer items-center gap-2 text-sm select-none">
       <input type="checkbox" name="urgent" value="1"
              {% if existing.urgency == "high" %}checked{% endif %}
-             class="h-4 w-4 rounded border-stone-300 accent-stone-900">
+             class="h-4 w-4 rounded border-stone-300 accent-[#71a07c]">
       Urgent
     </label>
 
@@ -44,7 +44,7 @@
         Cancel
       </button>
       <button type="submit"
-              class="flex-1 rounded-md bg-stone-900 px-4 py-3 text-base text-white hover:bg-stone-700">
+              class="flex-1 rounded-md bg-[#4a7355] px-4 py-3 text-base text-white hover:bg-[#3d6047]">
         Update quantity
       </button>
     </div>

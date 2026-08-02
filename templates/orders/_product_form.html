@@ -26,7 +26,7 @@
         <label for="p-name" class="block text-sm font-medium">Name</label>
         <input type="text" name="name" id="p-name" required autocomplete="off"
                value="{{ form.name.value|default:'' }}"
-               class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+               class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
         {% for error in form.name.errors %}
           <p class="mt-1 text-sm text-red-600">{{ error }}</p>
         {% endfor %}
@@ -35,7 +35,7 @@
       <div>
         <label for="p-seller" class="block text-sm font-medium">Seller</label>
         <select name="seller" id="p-seller" required
-                class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+                class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
           <option value="">Choose a seller…</option>
           {% for seller in sellers %}
             <option value="{{ seller.pk }}"
@@ -53,7 +53,7 @@
         <div class="w-1/2">
           <label for="p-unit" class="block text-sm font-medium">Unit of Measurement</label>
           <select name="unit" id="p-unit" required
-                  class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-stone-900 focus:outline-none">
+                  class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
             {% for value, label in form.fields.unit.choices %}
               {% if value %}
                 <option value="{{ value }}" {% if form.unit.value == value %}selected{% endif %}>{{ label }}</option>
@@ -71,7 +71,7 @@
             <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-500">&euro;</span>
             <input type="number" name="unit_price" id="p-price" step="0.01" min="0" required
                    inputmode="decimal" value="{{ form.unit_price.value|default:'' }}"
-                   class="w-full rounded-md border border-stone-300 py-3 pl-7 pr-3 text-base focus:border-stone-900 focus:outline-none">
+                   class="w-full rounded-md border border-stone-300 py-3 pl-7 pr-3 text-base focus:border-[#71a07c] focus:outline-none">
           </div>
           {% for error in form.unit_price.errors %}
             <p class="mt-1 text-sm text-red-600">{{ error }}</p>
@@ -88,7 +88,7 @@
     </button>
     {% if sellers %}
       <button type="submit"
-              class="flex-1 rounded-md bg-stone-900 px-4 py-3 text-base text-white hover:bg-stone-700">
+              class="flex-1 rounded-md bg-[#4a7355] px-4 py-3 text-base text-white hover:bg-[#3d6047]">
         Add product
       </button>
     {% endif %}
