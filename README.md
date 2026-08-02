@@ -29,6 +29,20 @@ source .venv/bin/activate     # now plain `python manage.py ...` works
 deactivate                    # when you are done
 ```
 
+### Is something already running?
+
+```bash
+ss -ltnp | grep :8000                 # anything listening on the port?
+pgrep -af "[m]anage.py runserver"     # any server process?
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/
+```
+
+No output from the first two means nothing is running; `000` from the third
+means nothing answered.
+
+The brackets in `[m]anage` matter. Without them `pgrep` matches its own
+command line and reports a server that is not there.
+
 ### Port already in use
 
 `Error: That port is already in use.` means a server is still running
