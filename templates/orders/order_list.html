@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Order list &middot; Mentor{% endblock %}
+{% block title %}Order Products&middot; Mentor{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold tracking-tight mb-4">Order list</h1>
+<h1 class="text-2xl font-semibold tracking-tight mb-4">Products</h1>
 
 {% include "orders/_panel.html" %}
 
@@ -50,12 +50,24 @@
     active = opts.length ? (index + opts.length) % opts.length : -1;
     opts.forEach((el, i) => el.setAttribute("aria-selected", i === active));
     if (opts[active]) opts[active].scrollIntoView({ block: "nearest" });
+
+    // Focus never leaves the input, so aria-activedescendant is the only way a
+    // screen reader learns which option the arrow keys are sitting on.
+    const box = search();
+    box.setAttribute("aria-expanded", opts.length > 0);
+    if (opts[active]) {
+      box.setAttribute("aria-activedescendant", opts[active].id);
+    } else {
+      box.removeAttribute("aria-activedescendant");
+    }
   }
 
   function close() {
     const box = results();
     if (box) box.innerHTML = "";
     active = -1;
+    search().setAttribute("aria-expanded", "false");
+    search().removeAttribute("aria-activedescendant");
   }
 
   // Lock in a product, then jump to quantity so an item can be added without

@@ -12,6 +12,7 @@
       <div class="relative grow min-w-56">
         <input type="text" name="q" id="product-search" autocomplete="off" placeholder="Search a product…"
                role="combobox" aria-autocomplete="list" aria-controls="product-results"
+               aria-expanded="false"
                hx-get="{% url 'product_search' %}"
                hx-trigger="input delay:150ms"
                hx-target="#product-results"

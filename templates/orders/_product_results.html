@@ -1,7 +1,11 @@
 {% if query %}
-  <div class="overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
+  {# role="listbox" is what makes the role="option" children legal, and what a
+     screen reader needs to announce this as a list of choices at all. #}
+  <div role="listbox" aria-label="Product results"
+       class="overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
     {% for product in products %}
       <button type="button" role="option" aria-selected="false"
+              id="product-option-{{ forloop.counter0 }}"
               class="search-result block w-full px-3 py-2 text-left hover:bg-stone-100"
               onclick="selectProduct({{ product.pk }}, '{{ product.name|escapejs }}', '{{ product.unit|escapejs }}')">
         <span class="font-medium">{{ product.name }}</span>
