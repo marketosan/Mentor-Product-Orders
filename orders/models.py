@@ -36,6 +36,14 @@ class Product(models.Model):
         BOX = "box", "box"
 
     name = models.CharField(max_length=200)
+    # What the seller calls this item on their own order sheet, when that
+    # differs from the shop's name for it. Admin-only: it never appears in the
+    # employee UI, and search still matches on `name`.
+    order_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Optional. The seller's own name for this product, for use when ordering.",
+    )
     unit = models.CharField(max_length=10, choices=Unit.choices)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Current price in euros.")
     seller = models.ForeignKey(Seller, on_delete=models.PROTECT, related_name="products")

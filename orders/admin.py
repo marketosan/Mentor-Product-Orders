@@ -12,9 +12,11 @@ class SellerAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name", "seller", "unit", "unit_price", "is_active")
+    list_display = ("name", "order_name", "seller", "unit", "unit_price", "is_active")
     list_filter = ("is_active", "seller", "unit")
-    search_fields = ("name",)
+    # Searchable here so an admin can find a product by whatever the seller
+    # calls it, which is what they are holding when they place the order.
+    search_fields = ("name", "order_name")
     autocomplete_fields = ("seller",)
 
 
