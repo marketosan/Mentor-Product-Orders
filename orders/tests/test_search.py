@@ -1,7 +1,7 @@
 from django.test import TestCase
 
-from .models import Product, Seller
-from .search import search_products
+from orders.models import Product, Seller
+from orders.search import search_products
 
 
 class ProductSearchTests(TestCase):
