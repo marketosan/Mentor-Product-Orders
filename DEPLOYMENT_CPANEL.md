@@ -221,19 +221,98 @@ internet. Do not leave this step for later.
 
 ---
 
-## Updating
+## Shipping a change
+
+GitHub is the middle: changes go from your machine to GitHub, and the server
+pulls from GitHub. Nothing is ever edited directly on the server — do that once
+and the next `git pull` either overwrites it or refuses to merge.
+
+### On your machine
+
+Make the change, then **before pushing**:
+
+```bash
+python manage.py test
+```
+
+All 372 should pass. They take about fifteen seconds and they are the only
+thing standing between a typo and the shop's live app.
+
+```bash
+git add -A
+git commit -m "Say what changed and why"
+git push
+```
+
+### On the server
+
+cPanel → **Git Version Control** → **Update from Remote**, or from a shell:
 
 ```bash
 cd /home/<user>/mentor
 git pull
+```
+
+Then run only the steps your change actually needs:
+
+| If the change touched | Run |
+|---|---|
+| `requirements.txt` | `pip install -r requirements.txt` |
+| anything in `*/migrations/` | `python manage.py migrate` |
+| anything in `static/` | `python manage.py collectstatic --noinput` |
+| **anything at all** | **Restart** |
+
+Unsure? Running all three is harmless — they each do nothing when there is
+nothing to do:
+
+```bash
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py collectstatic --noinput
 touch tmp/restart.txt
 ```
 
-With cPanel's Git Version Control you can also click **Update from Remote**,
-but the `migrate`/`collectstatic`/restart steps still have to happen.
+**The restart is not optional.** Passenger keeps the running process alive
+across a `git pull`, so without it your change is on disk and not in the app,
+and you will spend twenty minutes wondering why. Either `touch tmp/restart.txt`
+or click **Restart** on the Setup Python App page.
+
+### Back up first if there is a migration
+
+`git pull` is reversible. A migration is not, in general — some rewrite or drop
+data, and Django cannot always undo them. Before running `migrate` on a change
+you have not deployed before:
+
+```bash
+python -c "import sqlite3,sys; s=sqlite3.connect('/home/<user>/mentor-data/mentor.sqlite3'); d=sqlite3.connect(sys.argv[1]); s.backup(d); d.close(); s.close()" ~/mentor-data/before-migrate.sqlite3
+```
+
+Check whether a pull actually brings migrations with it:
+
+```bash
+python manage.py migrate --plan
+```
+
+That lists what would run without running it. Empty output means nothing to do
+and no backup needed.
+
+### If a deploy goes wrong
+
+Put the code back where it was:
+
+```bash
+cd /home/<user>/mentor
+git log --oneline -5          # find the last commit that worked
+git checkout <that-commit>
+touch tmp/restart.txt
+```
+
+Then `git checkout main` once it is fixed. If a migration had already run, the
+code alone is not enough — restore the database copy you took above, with the
+app stopped.
+
+Two habits that make this rare: deploy small changes rather than saving them
+up, and never deploy something whose tests you have not run.
 
 ## Backups
 

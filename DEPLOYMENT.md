@@ -332,6 +332,18 @@ Restoring is copying the file back over `db.sqlite3` with the app stopped.
 
 ## Updating
 
+Changes travel through GitHub: commit and push on your own machine, pull here.
+Never edit files directly on this machine — the next `git pull` will either
+overwrite it or refuse to merge.
+
+Run the tests before you push, not after:
+
+```bat
+python manage.py test
+```
+
+Then here:
+
 ```bat
 cd C:\mentor
 git pull
@@ -342,6 +354,16 @@ git pull
 
 Then restart the Waitress window (or `nssm restart Mentor`). Apache does not
 need restarting unless the vhost changed.
+
+**Back up `db.sqlite3` first if the change brings migrations.** A `git pull` can
+be undone; a migration often cannot. Check with:
+
+```bat
+.venv\Scripts\python manage.py migrate --plan
+```
+
+"No planned migration operations" means there is nothing to undo and no backup
+needed. Anything else, take the backup from the section above first.
 
 ## When something is wrong
 
