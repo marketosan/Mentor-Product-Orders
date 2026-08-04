@@ -49,12 +49,20 @@ variables override the file. Full deployment steps: `DEPLOYMENT.md`.
   styling at all.
 - Unhandled exceptions go to `logs/mentor.log` (rotating). With `DEBUG` off
   they would otherwise go nowhere.
-- **Database**: SQLite unless `DB_ENGINE=mysql`, which switches to MariaDB with
-  utf8mb4 and `STRICT_TRANS_TABLES`. `config/__init__.py` prefers `mysqlclient`
-  and falls back to **PyMySQL** — pure Python, so `pip install` cannot fail for
-  want of a C compiler, which matters on Windows and a new Python. Do not
-  override `pymysql.version_info` there: PyMySQL already reports the
-  mysqlclient release it emulates, and overriding it breaks Django's check.
+- **Database**: **SQLite in the shop as well as in development.** That is a
+  decision, not a leftover: one machine runs everything off one disk, so the
+  usual objections (several web servers sharing a database over a network,
+  heavy concurrent writes) do not apply, and a backup is a file copy.
+  - `DB_ENGINE=mysql` switches to MariaDB with utf8mb4 and
+    `STRICT_TRANS_TABLES`, but **XAMPP cannot run it**: XAMPP bundles MariaDB
+    10.4 and Django 6 requires 10.6+, so it refuses with
+    `NotSupportedError: MariaDB 10.6 or later is required (found 10.4.32)`.
+    Tried on 2026-08-04; no setting fixes it. It needs a newer MariaDB
+    installed outside XAMPP.
+  - `config/__init__.py` prefers `mysqlclient` and falls back to **PyMySQL** —
+    pure Python, so `pip install` cannot fail for want of a C compiler. Do not
+    override `pymysql.version_info` there: PyMySQL already reports the
+    mysqlclient release it emulates, and overriding it breaks Django's check.
 - **Serving**: `serve.py` runs Waitress (gunicorn is not an option on Windows);
   Apache reverse-proxies to it and serves `/static/` itself. Django does not
   run inside Apache — `mod_wsgi` is compiled and version-tied.

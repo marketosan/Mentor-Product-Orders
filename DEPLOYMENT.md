@@ -20,7 +20,7 @@ staff phones / tills
                      Waitress  ──►  Mentor
                             │
                             ▼
-                     MariaDB  :3306  (XAMPP)
+                     db.sqlite3   one file on disk
 ```
 
 Django does **not** run inside Apache. That would need `mod_wsgi`, a compiled
@@ -87,26 +87,37 @@ python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 ```
 
-`requirements.txt` uses **PyMySQL**, a pure-Python MySQL driver, precisely so
-this step cannot fail for want of a C compiler. If you would rather use
-`mysqlclient` (what Django tests against), install it as well and it takes
-precedence automatically — see `config/__init__.py`.
+Nothing here needs a C compiler, so this step cannot fail for want of one.
+`PyMySQL` is in the list for the day someone points this at MySQL; on SQLite it
+is never imported.
 
-## 4. Create the database
+## 4. The database
 
-Start **Apache** and **MySQL** from the XAMPP control panel, then open
-<http://localhost/phpmyadmin>.
+**Nothing to do.** The app uses SQLite: a single file, `db.sqlite3`, created
+beside `manage.py` by the migrate step below. No server, no credentials, no
+XAMPP MySQL involved.
 
-1. **Databases** → create `mentor`, collation **`utf8mb4_unicode_ci`**.
-   The collation matters: the app stores Greek product names.
-2. **User accounts** → **Add user account**
-   - Username `mentor`, hostname `localhost`, and a password you generate
-   - **Do not** tick "Create database with same name" — it already exists
-   - Grant **all privileges on `mentor`** only, not globally
+That is the deployment choice, not a development shortcut. The usual "don't use
+SQLite in production" advice is about several web servers sharing one database
+over a network, and about heavy concurrent writes. Neither happens here: one
+machine runs everything off one disk, and a coffee shop's ordering tool is
+mostly reads with an occasional write. Adding a database server would buy
+nothing and cost a process that has to stay running.
 
-Using the `root` account with a blank password works and is what XAMPP ships
-with. Don't. Anything else on that machine can then read and rewrite the shop's
-order history.
+Switching later is one line in `.env` — `DB_ENGINE` — not a rewrite.
+
+> **Not MySQL, and not by choice.** XAMPP bundles **MariaDB 10.4**; Django 6
+> requires **10.6 or later** and refuses to connect:
+>
+> ```
+> NotSupportedError: MariaDB 10.6 or later is required (found 10.4.32).
+> ```
+>
+> No setting fixes that. It needs a newer MariaDB installed separately from
+> XAMPP, or an older Django — which would mean the shop running a different
+> Django from the one the app is built and tested against. If you do want
+> MySQL later, that is the work involved; `DB_ENGINE=mysql` and the rest of the
+> `DB_*` settings are already in place for it.
 
 ## 5. Write the .env file
 
@@ -126,12 +137,7 @@ ALLOWED_HOSTS=192.168.1.50,localhost,127.0.0.1
 CSRF_TRUSTED_ORIGINS=http://192.168.1.50,http://localhost
 TIME_ZONE=Europe/Athens
 
-DB_ENGINE=mysql
-DB_NAME=mentor
-DB_USER=mentor
-DB_PASSWORD=<the password from step 4>
-DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_ENGINE=sqlite
 
 HTTPS=0
 ```
@@ -325,16 +331,23 @@ address changes, every phone's bookmark breaks.
 
 ## Backups
 
-The whole shop is in the database. Back it up somewhere that is not this
-machine:
+The whole shop is in one file, `C:\mentor\db.sqlite3`. Backing up is copying
+it — this is the part of SQLite that is genuinely nicer than a database server.
+
+Use SQLite's own backup command rather than plain `copy`. It takes a consistent
+snapshot even while the app is running and mid-write; a raw file copy of a
+database being written to can capture a torn half-state.
 
 ```bat
-C:\xampp\mysql\bin\mysqldump -u mentor -p mentor > mentor-backup.sql
+cd C:\mentor
+.venv\Scripts\python -c "import sqlite3,sys; s=sqlite3.connect('db.sqlite3'); d=sqlite3.connect(sys.argv[1]); s.backup(d); d.close(); s.close()" \\nas\backups\mentor-%date:~-4%%date:~3,2%%date:~0,2%.sqlite3
 ```
 
-Worth a scheduled task, weekly, writing to a dated filename on a drive or share
-that is not this computer. A backup sitting on the machine that dies is not a
-backup.
+Worth a weekly scheduled task writing to a dated filename on a drive or share
+that is **not this computer**. A backup sitting on the machine that dies is not
+a backup.
+
+Restoring is copying the file back over `db.sqlite3` with the app stopped.
 
 ## Updating
 
@@ -360,6 +373,8 @@ need restarting unless the vhost changed.
 | **502 / "Service Unavailable"** | Waitress is not running. Apache is up, the app is not. |
 | **Nobody can log in after enabling HTTPS** | `HTTPS=1` while Apache still serves plain `http`. |
 | **Works on the machine, not on phones** | Firewall rule, or the machine's IP changed. |
+| **`MariaDB 10.6 or later is required`** | `DB_ENGINE=mysql` in `.env`. XAMPP's MariaDB is too old for Django 6 — set it back to `sqlite`. |
+| **`Access denied for user ... to database`** | Same cause: you are on the MySQL path. Set `DB_ENGINE=sqlite`. |
 
 ## Not done yet
 
@@ -367,10 +382,16 @@ need restarting unless the vhost changed.
   the network in the clear. Acceptable on a private shop network; not if this
   is ever reachable from outside. Set `HTTPS=1` in the same change that puts a
   certificate on Apache, never before.
-- **Migrations have only been run against SQLite.** They should apply cleanly
-  to MariaDB, and step 6 is where you find out. Nothing else in the app depends
-  on which database is underneath.
-- **Existing `db.sqlite3` data does not move across.** Step 6 starts empty. To
-  carry data over: `manage.py dumpdata --natural-foreign --exclude=contenttypes
-  --exclude=auth.permission > data.json` on the old database, then `loaddata`
-  after migrating the new one.
+- **The shop starts with an empty database.** Step 6 creates it from nothing.
+  To carry data over from another machine, run this on the old one:
+
+  ```bat
+  manage.py dumpdata --natural-foreign --exclude=contenttypes --exclude=auth.permission > data.json
+  ```
+
+  then `manage.py loaddata data.json` on the new one after migrating. Passwords
+  survive; they are hashed in the dump.
+- **MySQL is not available on XAMPP as it ships** — MariaDB 10.4 against
+  Django 6's floor of 10.6. See step 4. Nothing in the app depends on which
+  database is underneath, so this is a swap whenever a supported MariaDB is
+  actually installed.
