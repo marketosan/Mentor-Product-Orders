@@ -6,11 +6,13 @@ urlpatterns = [
     path("", views.order_list, name="order_list"),
     # Not "admin/" -- Django's own admin already owns that.
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("history/", views.history, name="history"),
     path("panel/", views.panel, name="panel"),
     path("items/add/", views.add_item, name="add_item"),
     path("items/<int:pk>/edit/", views.edit_item, name="edit_item"),
     path("items/<int:pk>/delete/", views.delete_item, name="delete_item"),
     path("items/<int:pk>/complete/", views.complete_item, name="complete_item"),
+    path("items/<int:pk>/uncomplete/", views.uncomplete_item, name="uncomplete_item"),
     path("sellers/", views.sellers, name="sellers"),
     path("sellers/new/", views.new_seller, name="new_seller"),
     path("sellers/<int:pk>/edit/", views.edit_seller, name="edit_seller"),

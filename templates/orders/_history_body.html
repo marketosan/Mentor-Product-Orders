@@ -1,0 +1,163 @@
+{% comment %}
+  Filters, list and pager in one swap, so the controls always agree with what
+  is on screen. Changing either filter drops the page number -- neither select
+  carries it -- which lands you back on page 1, where you want to be after
+  narrowing.
+{% endcomment %}
+<div id="history-body">
+
+  <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <label for="history-period" class="text-sm font-medium text-stone-700">Period</label>
+    <select name="period" id="history-period"
+            hx-get="{% url 'history' %}"
+            hx-include="#history-size"
+            hx-target="#history-body"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            class="rounded-md border border-stone-300 bg-white px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for slug, label, days in periods %}
+        <option value="{{ slug }}" {% if slug == period %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="history-size" class="text-sm font-medium text-stone-700">Show</label>
+    <select name="size" id="history-size"
+            hx-get="{% url 'history' %}"
+            hx-include="#history-period"
+            hx-target="#history-body"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            class="rounded-md border border-stone-300 bg-white px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for size in page_sizes %}
+        <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>{{ size }} orders</option>
+      {% endfor %}
+    </select>
+
+    <p class="ml-auto text-sm text-stone-500">
+      {% if paginator.count %}
+        {{ page.start_index }}&ndash;{{ page.end_index }} of {{ paginator.count }} order{{ paginator.count|pluralize }}
+      {% else %}
+        No orders
+      {% endif %}
+    </p>
+  </div>
+
+  {% for order in orders %}
+    <section class="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white">
+      <header class="border-b border-stone-200 bg-stone-50 px-4 py-3">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 class="font-medium tracking-tight text-stone-900">{{ order.seller.name }}</h2>
+          <span class="text-sm font-semibold tabular-nums text-stone-700">
+            &euro;{{ order.total|floatformat:2 }}
+          </span>
+        </div>
+        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500">
+          <span>{{ order.completed_at|date:"j M Y, H:i" }}</span>
+          {% if order.completed_by %}
+            <span class="text-stone-300" aria-hidden="true">&bull;</span>
+            <span>marked by {{ order.completed_by.username }}</span>
+          {% endif %}
+          <span class="text-stone-300" aria-hidden="true">&bull;</span>
+          <span>{{ order.items|length }} item{{ order.items|length|pluralize }}</span>
+        </div>
+      </header>
+
+      <div class="divide-y divide-stone-200">
+        {% for item in order.items %}
+          <div class="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3">
+            <div class="min-w-0 flex-1">
+              <span class="font-medium leading-snug text-stone-900">{{ item.product.name }}</span>
+              {% if item.product.order_name %}
+                <span class="text-sm text-stone-500">&middot; {{ item.product.order_name }}</span>
+              {% endif %}
+              <div class="mt-0.5 text-sm leading-snug text-stone-400">
+                requested by {{ item.requested_by.username }}, {{ item.created_at|date:"j M H:i" }}
+              </div>
+            </div>
+
+            {% comment %}
+              Rule 4's undo. Spelled out rather than left as an icon: an arrow
+              alone does not say whether it reverses the order or the page.
+
+              The filters and page ride in the query string so the screen does
+              not jump back to page 1 mid-correction.
+            {% endcomment %}
+            <button hx-post="{% url 'uncomplete_item' item.pk %}?period={{ period }}&amp;size={{ page_size }}&amp;page={{ page.number }}"
+                    hx-target="#history-body" hx-swap="outerHTML"
+                    hx-confirm="Mark {{ item.product.name }} as not ordered? It goes back on the order list."
+                    aria-label="Mark {{ item.product.name }} as not ordered"
+                    title="Mark as not ordered"
+                    class="order-last inline-flex shrink-0 items-center gap-1.5 rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 sm:order-none">
+              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
+              </svg>
+              Mark as not ordered
+            </button>
+
+            <div class="shrink-0 text-right">
+              <div class="leading-tight font-medium tabular-nums text-stone-900">
+                {{ item.quantity|floatformat:"-3" }}<span class="ml-1 text-sm font-normal text-stone-500">{{ item.product.unit }}</span>
+              </div>
+              {% comment %}
+                The price frozen at request time, which is what the line total
+                is built from -- rule 2's whole point, and the reason history
+                stays true after a catalog price change.
+              {% endcomment %}
+              <div class="mt-0.5 text-xs tabular-nums text-stone-500">
+                &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
+                <span class="text-stone-300" aria-hidden="true">&middot;</span>
+                <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% empty %}
+    <div class="mt-6 rounded-lg border border-stone-200 bg-white px-4 py-12 text-center">
+      <p class="font-medium text-stone-700">Nothing ordered yet</p>
+      <p class="mt-1 text-sm text-stone-500">
+        {% if period %}
+          Nothing was marked as ordered in this period. Try a wider one.
+        {% else %}
+          Orders appear here once an admin marks them as ordered.
+        {% endif %}
+      </p>
+    </div>
+  {% endfor %}
+
+  {% if page.has_other_pages %}
+    {% comment %}
+      The filters travel in every pager link, so paging never quietly widens
+      the window being looked at.
+    {% endcomment %}
+    <nav aria-label="History pages" class="mt-6 flex items-center justify-between gap-3">
+      {% if page.has_previous %}
+        <a href="{% url 'history' %}?period={{ period }}&amp;size={{ page_size }}&amp;page={{ page.previous_page_number }}"
+           hx-get="{% url 'history' %}?period={{ period }}&amp;size={{ page_size }}&amp;page={{ page.previous_page_number }}"
+           hx-target="#history-body" hx-swap="outerHTML" hx-push-url="true"
+           class="rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm hover:bg-stone-50">
+          Previous
+        </a>
+      {% else %}
+        <span class="rounded-md border border-stone-200 px-4 py-2.5 text-sm text-stone-300">Previous</span>
+      {% endif %}
+
+      <span class="text-sm text-stone-500">
+        Page {{ page.number }} of {{ paginator.num_pages }}
+      </span>
+
+      {% if page.has_next %}
+        <a href="{% url 'history' %}?period={{ period }}&amp;size={{ page_size }}&amp;page={{ page.next_page_number }}"
+           hx-get="{% url 'history' %}?period={{ period }}&amp;size={{ page_size }}&amp;page={{ page.next_page_number }}"
+           hx-target="#history-body" hx-swap="outerHTML" hx-push-url="true"
+           class="rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm hover:bg-stone-50">
+          Next
+        </a>
+      {% else %}
+        <span class="rounded-md border border-stone-200 px-4 py-2.5 text-sm text-stone-300">Next</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+</div>

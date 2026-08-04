@@ -1,8 +1,10 @@
 import json
+from datetime import timedelta
 from itertools import groupby
 from urllib.parse import quote
 
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -18,6 +20,7 @@ PANEL = "orders/_panel.html"
 DASHBOARD_BODY = "orders/_dashboard_body.html"
 PRODUCT_FORM = "orders/_product_form.html"
 PRODUCT_LIST = "orders/_product_list.html"
+HISTORY_BODY = "orders/_history_body.html"
 
 # Opens the order message. Greek, because it is read by the supplier, not
 # by anyone using the app.
@@ -401,6 +404,35 @@ def toggle_seller(request, pk):
 
 @shop_admin_required
 @require_POST
+def uncomplete_item(request, pk):
+    """Put a completed item back on the list -- rule 4's undo.
+
+    Refused when that product already has something open: the shop never lists
+    the same product twice (rule 1), and if it is already back on the list then
+    what the admin wanted is already true.
+
+    The filters and page travel in the URL's query string rather than through
+    hx-include, because the page number is not an input on the screen.
+    """
+    item = get_object_or_404(
+        OrderItem.objects.completed().select_related("product"), pk=pk
+    )
+
+    if OrderItem.objects.open().filter(product=item.product).exists():
+        return _toast(
+            render(request, HISTORY_BODY, _history_context(request)),
+            f"{item.product.name} is already on the list",
+        )
+
+    OrderItem.objects.filter(pk=item.pk).update(completed_at=None, completed_by=None)
+    return _toast(
+        render(request, HISTORY_BODY, _history_context(request)),
+        f"{item.product.name} moved back to the list",
+    )
+
+
+@shop_admin_required
+@require_POST
 def complete_seller(request, pk):
     """Mark everything still open for one seller as ordered.
 
@@ -469,6 +501,89 @@ def new_product(request):
         {"form": form, "title": "New product", "sellers": Seller.objects.filter(is_active=True)},
         status=status,
     )
+
+
+# How far back the history page can look. "" is all time, and is last so the
+# narrowest window is the first thing offered.
+HISTORY_PERIODS = (
+    ("day", "Last 24 hours", 1),
+    ("week", "Last 7 days", 7),
+    ("month", "Last 30 days", 30),
+    ("", "All time", None),
+)
+HISTORY_PAGE_SIZES = (5, 10, 20, 50)
+DEFAULT_HISTORY_PAGE_SIZE = 20
+
+
+def _history_context(request):
+    """Completed orders, newest first, a page at a time.
+
+    An "order" is a batch: completing one item or a whole seller writes the
+    same `completed_at` to every row it touches, and those timestamps are
+    microsecond-precise, so no two actions collide. That shared timestamp is
+    what identifies a batch without the separate table rule 4 rules out.
+
+    Paging is over the *distinct timestamps* rather than the rows, so a page is
+    twenty orders rather than twenty items, and the database does the slicing.
+    Only the current page's rows are then fetched -- the table is expected to
+    outgrow anything worth loading whole.
+    """
+    period = request.GET.get("period", "")
+    if period not in {slug for slug, _, _ in HISTORY_PERIODS}:
+        period = ""
+    days = next(days for slug, _, days in HISTORY_PERIODS if slug == period)
+
+    page_size = _int_or_none(request.GET.get("size"))
+    if page_size not in HISTORY_PAGE_SIZES:
+        page_size = DEFAULT_HISTORY_PAGE_SIZE
+
+    items = OrderItem.objects.completed().select_related(
+        "product__seller", "requested_by", "completed_by"
+    )
+    if days is not None:
+        items = items.filter(completed_at__gte=timezone.now() - timedelta(days=days))
+
+    stamps = items.order_by("-completed_at").values_list("completed_at", flat=True).distinct()
+    paginator = Paginator(stamps, page_size)
+    # get_page swallows a junk or out-of-range page rather than raising, which
+    # is what a stale bookmark deserves.
+    page = paginator.get_page(request.GET.get("page"))
+
+    rows = items.filter(completed_at__in=list(page.object_list)).order_by(
+        "-completed_at", "product__name"
+    )
+
+    orders = []
+    for completed_at, batch in groupby(rows, key=lambda item: item.completed_at):
+        batch = list(batch)
+        orders.append({
+            "completed_at": completed_at,
+            "completed_by": batch[0].completed_by,
+            # Every batch comes from one action, which only ever spans one
+            # seller -- individually or as that seller's whole list.
+            "seller": batch[0].product.seller,
+            "items": batch,
+            "total": sum(item.line_total for item in batch),
+        })
+
+    return {
+        "orders": orders,
+        "page": page,
+        "paginator": paginator,
+        "period": period,
+        "periods": HISTORY_PERIODS,
+        "page_size": page_size,
+        "page_sizes": HISTORY_PAGE_SIZES,
+    }
+
+
+@shop_admin_required
+def history(request):
+    """What has already been ordered. Admin-only, per the spec."""
+    context = _history_context(request)
+    if request.headers.get("HX-Request"):
+        return render(request, HISTORY_BODY, context)
+    return render(request, "orders/history.html", context)
 
 
 def _product_list_context(request):

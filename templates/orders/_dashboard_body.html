@@ -250,13 +250,13 @@
             {% endcomment %}
             <div class="flex w-full shrink-0 items-center justify-end gap-0.5 sm:w-auto">
               {% comment %}
-                Completing is confirmed because there is no undo yet: the row
-                leaves the dashboard and only /admin can bring it back. Drop the
-                confirm once undo exists.
+                No confirm: this is the fastest, most repeated action on the
+                page, and History can put a single item back in one tap. The
+                whole-seller button below keeps its confirm, because undoing a
+                ten-item batch is ten taps.
               {% endcomment %}
               <button hx-post="{% url 'complete_item' item.pk %}"
                       hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
-                      hx-confirm="Mark {{ item.product.name }} as ordered?"
                       aria-label="Mark {{ item.product.name }} as ordered" title="Mark as ordered"
                       class="rounded-md p-2 text-stone-400 hover:bg-[#eef4f0] hover:text-[#3d6047]">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"

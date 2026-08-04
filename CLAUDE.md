@@ -87,6 +87,7 @@ by adding a tuple, not by editing markup.
 |---|---|---|
 | Home | `/` | everyone |
 | Dashboard | `/dashboard/` | admins |
+| History | `/history/` | admins |
 | Sellers | `/sellers/` | admins |
 | Products | `/products/` | admins |
 | Users | `/users/` | admins |
@@ -297,11 +298,40 @@ Both agreed with the user:
   per row, using `unit_price_snapshot`. The live catalog price would contradict
   the line total, which is quantity times the snapshot.
 
+**Done — order history** (`/history/`, admin-only)
+- Completed orders newest first. **An order is a batch**: completing one item
+  or a whole seller writes the same `completed_at` to every row it touches, and
+  those timestamps are microsecond-precise, so no two actions collide. That
+  shared timestamp identifies a batch without the table rule 4 forbids.
+- Period filter (24 hours / 7 days / 30 days / all time) and page size
+  (5/10/20/50, default 20), both validated against their allowed values — an
+  unoffered `?size=` would otherwise be a way to load the whole table.
+- **Paging is over the distinct timestamps, not the rows**, so a page is twenty
+  *orders* rather than twenty items and the database does the slicing. Only the
+  current page's rows are then fetched; this table is the one expected to grow
+  without limit. Keep it that way — grouping in Python over the whole queryset
+  would load everything ever ordered.
+- Filters travel in every pager link, so paging cannot quietly widen the window.
+  A junk or out-of-range `?page=` lands on the first or last page rather than
+  404ing, which is what a stale bookmark deserves.
+
+- **Undo** (`uncomplete_item`), on every history row: clears `completed_at` and
+  `completed_by` so the item returns to the list. Refused when that product
+  already has something open — rule 1 keeps a product off the list twice, and
+  if it is already back there then what the admin wanted is already true.
+  Filters and page ride in the URL's query string, not `hx-include`, because
+  the page number is not an input on the screen.
+
+**Which actions ask for confirmation, and why**
+
+| Action | Confirm? | Reason |
+|---|---|---|
+| Mark one item ordered | no | fastest, most repeated action; undo is one tap |
+| Mark a whole seller ordered | **yes** | undo is per item, so reversing ten is ten taps |
+| Delete an open item | **yes** | the row is gone for good, nothing to undo |
+| Undo a completion | **yes** | it puts an item back on the live order list |
+
 **Not started**
-- **Undo a completion.** Rule 4 requires it and it does not exist yet: a
-  completed row leaves the dashboard and only `/admin` can bring it back. The
-  complete button carries an `hx-confirm` purely to cover that gap — drop the
-  confirm once undo lands.
 - Multi-select completion (picking several specific items across the list).
   Individual and whole-seller batch both exist; this is the remaining mode.
 - Order history (admin-only).

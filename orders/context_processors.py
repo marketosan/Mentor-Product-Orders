@@ -6,6 +6,7 @@
 NAV_LINKS = (
     ("order_list", "Home", False),
     ("dashboard", "Dashboard", True),
+    ("history", "History", True),
     ("sellers", "Sellers", True),
     ("products", "Products", True),
     ("users", "Users", True),
