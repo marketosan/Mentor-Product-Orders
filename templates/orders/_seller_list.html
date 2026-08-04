@@ -1,0 +1,104 @@
+{% comment %}
+  The list on its own, so searching and every row action swap just this and
+  leave the search box holding what was typed.
+{% endcomment %}
+<div id="seller-list" class="mt-4 divide-y divide-stone-200 overflow-hidden rounded-lg border border-stone-200 bg-white">
+  {% for seller in sellers %}
+    <div class="flex flex-wrap items-start gap-x-3 gap-y-2 px-4 py-3.5 {% if not seller.is_active %}bg-stone-50{% endif %}">
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span class="font-medium leading-snug {% if seller.is_active %}text-stone-900{% else %}text-stone-500{% endif %}">
+            {{ seller.name }}
+          </span>
+          {% if not seller.is_active %}
+            {% comment %}
+              Sellers are deactivated, never deleted -- order history reaches
+              them through their products. Hidden from search and the product
+              form, but they still have to be visible and revivable here.
+            {% endcomment %}
+            <span class="rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold tracking-wide text-stone-600 uppercase">
+              inactive
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          {% if seller.viber_url %}
+            <a href="{{ seller.viber_url }}"
+               title="Chat with {{ seller.name }} on Viber"
+               class="text-[#4a7355] underline underline-offset-2 hover:text-[#3d6047]">
+              {{ seller.phone }}
+            </a>
+          {% endif %}
+          {% if seller.email %}
+            <a href="mailto:{{ seller.email }}"
+               class="text-[#4a7355] underline underline-offset-2 hover:text-[#3d6047]">
+              {{ seller.email }}
+            </a>
+          {% endif %}
+          {% if not seller.phone and not seller.email %}
+            <span class="text-stone-400">No contact details</span>
+          {% endif %}
+        </div>
+
+        {% if seller.notes %}
+          <p class="mt-1 text-sm leading-snug text-stone-500">{{ seller.notes }}</p>
+        {% endif %}
+      </div>
+
+      <span class="shrink-0 self-center text-sm tabular-nums text-stone-500">
+        {{ seller.product_count }} product{{ seller.product_count|pluralize }}
+      </span>
+
+      <div class="flex w-full shrink-0 items-center justify-end gap-0.5 sm:w-auto">
+        <button hx-get="{% url 'edit_seller' seller.pk %}"
+                hx-target="#modal-body" hx-swap="innerHTML"
+                hx-on::after-request="document.getElementById('modal').showModal()"
+                aria-label="Edit {{ seller.name }}" title="Edit"
+                class="rounded-md p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-900">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+          </svg>
+        </button>
+
+        {% comment %}
+          "Delete" is a deactivation: rule 3 keeps sellers as rows because
+          history points at them. Reversible, so the confirm names what will
+          actually happen rather than implying the row disappears.
+        {% endcomment %}
+        {% if seller.is_active %}
+          <button hx-post="{% url 'toggle_seller' seller.pk %}"
+                  hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-search"
+                  hx-confirm="Deactivate {{ seller.name }}? They stay in past orders but disappear from product search."
+                  aria-label="Deactivate {{ seller.name }}" title="Deactivate"
+                  class="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            </svg>
+          </button>
+        {% else %}
+          <button hx-post="{% url 'toggle_seller' seller.pk %}"
+                  hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-search"
+                  class="rounded-md px-3 py-2 text-sm text-[#4a7355] hover:bg-[#eef4f0] hover:text-[#3d6047]">
+            Reactivate
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="px-4 py-12 text-center">
+      {% if query %}
+        <p class="font-medium text-stone-700">No seller matches “{{ query }}”</p>
+        <p class="mt-1 text-sm text-stone-500">Try part of a name, phone number or email.</p>
+      {% else %}
+        <p class="font-medium text-stone-700">No sellers yet</p>
+        <p class="mt-1 text-sm text-stone-500">
+          Products cannot be added until the shop has at least one seller.
+        </p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>

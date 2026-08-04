@@ -1,0 +1,304 @@
+{% comment %}
+  Everything the seller filter affects, in one swap: the filter itself (so the
+  chosen option survives), the summary, and the groups. Re-rendering the lot
+  keeps the count and the list from drifting apart, as the order panel does.
+{% endcomment %}
+<div id="dashboard-body">
+
+  {% if groups or selected_seller %}
+    <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <label for="seller-filter" class="text-sm font-medium text-stone-700">Seller</label>
+
+      {% comment %}
+        The options are the sellers that actually have something open, so every
+        choice leads somewhere. text-base keeps iOS from zooming on focus and
+        py-2.5 keeps the target thumb-sized.
+      {% endcomment %}
+      <select name="seller" id="seller-filter"
+              hx-get="{% url 'dashboard' %}"
+              hx-target="#dashboard-body"
+              hx-swap="outerHTML"
+              hx-push-url="true"
+              class="rounded-md border border-stone-300 bg-white px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+        <option value="">All sellers</option>
+        {% for seller in sellers %}
+          <option value="{{ seller.pk }}" {% if seller == selected_seller %}selected{% endif %}>
+            {{ seller.name }}
+          </option>
+        {% endfor %}
+      </select>
+
+      {% if selected_seller %}
+        <a href="{% url 'dashboard' %}"
+           hx-get="{% url 'dashboard' %}"
+           hx-target="#dashboard-body"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           class="text-sm text-stone-500 underline underline-offset-2 hover:text-stone-900">
+          Clear
+        </a>
+      {% endif %}
+
+      <p class="ml-auto text-sm text-stone-500">
+        {{ item_count }} item{{ item_count|pluralize }}{% if not selected_seller %} across
+        {{ groups|length }} seller{{ groups|length|pluralize }}{% endif %}
+        &middot; <span class="font-medium text-stone-700 tabular-nums">&euro;{{ grand_total|floatformat:2 }}</span>
+      </p>
+    </div>
+  {% endif %}
+
+  {% comment %}
+    One block per seller, because the shop places one order per supplier -- by
+    phone or email, outside the app -- and works through them one at a time.
+  {% endcomment %}
+  {% for group in groups %}
+    <section class="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white">
+
+      {% comment %}
+        A solid green bar so each supplier reads as its own block at a glance
+        while scrolling a long board.
+
+        #4a7355 is the lightest of the three greens that can carry white text:
+        it gives white 5.42:1, clearing the 4.5:1 floor. The brand #71a07c is
+        only 2.99:1 and cannot be used behind text at any size.
+
+        The seller's contact details sit here rather than behind a lookup:
+        placing the order means messaging or emailing from this screen, usually
+        on a phone, so both are one tap.
+      {% endcomment %}
+      <header class="bg-[#4a7355] px-4 py-3 text-white">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          {# Lighter weight: the bar itself already separates the sellers, so the name does not also have to shout. #}
+          <h2 class="text-lg font-medium tracking-tight">{{ group.seller.name }}</h2>
+          <span class="text-sm font-semibold tabular-nums">
+            &euro;{{ group.total|floatformat:2 }}
+          </span>
+        </div>
+
+        {# stone-100, not stone-200: on the lighter bar stone-200 falls to 4.32:1, under the floor for text this size. #}
+        <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-100">
+          <span>{{ group.items|length }} item{{ group.items|length|pluralize }}</span>
+          {% if group.urgent_count %}
+            {# A light badge keeps its own contrast rather than relying on the green behind it. #}
+            <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold tracking-wide text-red-800 uppercase">
+              {{ group.urgent_count }} urgent
+            </span>
+          {% endif %}
+          {% if group.seller.phone %}
+            {# The number dials. Sending the order is the button on the right. #}
+            <a href="tel:{{ group.seller.phone }}"
+               title="Call {{ group.seller.name }}"
+               class="inline-flex items-center gap-1 text-white underline underline-offset-2 hover:text-stone-100">
+              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.5-1.2a2 2 0 0 1 2.1-.5c.8.3 1.7.6 2.6.7a2 2 0 0 1 1.7 2Z"/>
+              </svg>
+              {{ group.seller.phone }}
+            </a>
+          {% endif %}
+          {% if group.seller.email %}
+            <a href="mailto:{{ group.seller.email }}" class="text-white underline underline-offset-2 hover:text-stone-200">
+              {{ group.seller.email }}
+            </a>
+          {% endif %}
+
+          {% comment %}
+            With a number: copy the order and open that seller's Viber chat, so
+            sending is one paste. order-message.js does the copying, keyed off
+            data-order-message, and the href it navigates to is the chat.
+
+            Without one there is no chat to open, so the link falls back to
+            viber://forward, which carries the text itself and asks which chat.
+            No data-order-message there -- nothing to paste into.
+          {% endcomment %}
+          <a href="{% if group.seller.viber_url %}{{ group.seller.viber_url }}{% else %}{{ group.viber_forward_url }}{% endif %}"
+             {% if group.seller.viber_url %}data-order-message="{{ group.message }}"{% endif %}
+             title="{% if group.seller.viber_url %}Copy this order and open the chat with {{ group.seller.name }}{% else %}Open Viber with this order ready to send{% endif %}"
+             class="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/50 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/10">
+            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>
+            </svg>
+            Send order
+          </a>
+
+          {% comment %}
+            Clearing a whole supplier in one tap is the common case, since the
+            shop places one order per seller. Solid white on the green bar for
+            contrast, and confirmed because there is still no undo.
+          {% endcomment %}
+          <form hx-post="{% url 'complete_seller' group.seller.pk %}"
+                hx-target="#dashboard-body"
+                hx-swap="outerHTML"
+                hx-include="#seller-filter"
+                hx-confirm="Mark all {{ group.items|length }} item{{ group.items|length|pluralize }} from {{ group.seller.name }} as ordered?"
+                class="">
+            {% csrf_token %}
+            <button type="submit"
+                    class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-[#3d6047] hover:bg-stone-100">
+              Mark all as ordered
+            </button>
+          </form>
+        </div>
+      </header>
+
+      <div class="divide-y divide-stone-200">
+        {% for item in group.items %}
+          {% if item.pk == editing_id %}
+
+            {% comment %}
+              Row in edit mode. Only quantity and urgency change here --
+              swapping product means adding a new item, not repointing this one.
+              hx-include carries the seller filter so saving does not bounce
+              the admin back to the unfiltered board.
+            {% endcomment %}
+            <form hx-post="{% url 'edit_item' item.pk %}"
+                  hx-target="#dashboard-body"
+                  hx-swap="outerHTML"
+                  hx-include="#seller-filter"
+                  class="flex flex-wrap items-center gap-3 bg-stone-50 py-3.5 pl-4 pr-3">
+              {% csrf_token %}
+              <span class="grow font-medium text-stone-900">{{ item.product.name }}</span>
+
+              <input type="number" name="quantity" step="0.001" min="0" value="{{ item.quantity|floatformat:'-3' }}"
+                     autofocus inputmode="decimal"
+                     class="w-28 rounded-md border border-stone-300 px-3 py-2 text-base focus:border-[#71a07c] focus:outline-none">
+              <span class="text-sm text-stone-500">{{ item.product.unit }}</span>
+
+              <label class="flex cursor-pointer items-center gap-2 text-sm select-none">
+                <input type="checkbox" name="urgent" value="1" {% if item.urgency == 'high' %}checked{% endif %}
+                       class="h-4 w-4 rounded border-stone-300 accent-[#71a07c]">
+                Urgent
+              </label>
+
+              <button type="submit" class="rounded-md bg-[#4a7355] px-4 py-2 text-sm text-white hover:bg-[#3d6047]">Save</button>
+              <button type="button"
+                      hx-get="{% url 'dashboard' %}"
+                      hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
+                      class="text-sm text-stone-500 hover:text-stone-900">Cancel</button>
+
+              {% for field_errors in edit_form.errors.values %}
+                {% for error in field_errors %}
+                  <p class="w-full text-sm text-red-600">{{ error }}</p>
+                {% endfor %}
+              {% endfor %}
+            </form>
+
+          {% else %}
+
+          <div class="relative flex flex-wrap items-start gap-x-3 gap-y-2 py-3.5 pl-4 pr-3 {% if item.urgency == 'high' %}bg-red-50/50{% endif %}">
+            {% if item.urgency == "high" %}
+              {# A full-height edge marker reads faster down a long list than a badge alone. #}
+              <span class="absolute inset-y-0 left-0 w-1 bg-red-500" aria-hidden="true"></span>
+            {% endif %}
+
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {% comment %}
+                  The name opens the catalog entry for editing -- every field,
+                  including the seller's own order name. Editing the row itself
+                  (quantity, urgency) is the pencil on the right.
+                {% endcomment %}
+                <button type="button"
+                        hx-get="{% url 'edit_product' item.product.pk %}?origin=dashboard"
+                        hx-target="#modal-body" hx-swap="innerHTML"
+                        hx-on::after-request="document.getElementById('modal').showModal()"
+                        title="Edit {{ item.product.name }} in the catalog"
+                        class="text-left font-medium leading-snug text-stone-900 underline decoration-stone-300 decoration-dotted underline-offset-4 hover:decoration-stone-900">
+                  {{ item.product.name }}
+                </button>
+                {% if item.urgency == "high" %}
+                  <span class="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold tracking-wide text-red-700 uppercase">urgent</span>
+                {% endif %}
+              </div>
+
+              {% if item.product.order_name %}
+                {% comment %}
+                  The seller's own wording for the item. Only shown here, since
+                  it exists purely to save translating names while ordering.
+                {% endcomment %}
+                <div class="mt-0.5 text-sm leading-snug text-stone-600">
+                  order as <span class="font-medium text-stone-800">{{ item.product.order_name }}</span>
+                </div>
+              {% endif %}
+
+              <div class="mt-1 text-sm leading-snug text-stone-400">
+                {{ item.requested_by.username }}, {{ item.created_at|date:"j M H:i" }}
+              </div>
+            </div>
+
+            <div class="shrink-0 text-right">
+              <div class="leading-tight font-semibold tabular-nums text-stone-900">
+                {{ item.quantity|floatformat:"-3" }}<span class="ml-1 text-sm font-normal text-stone-500">{{ item.product.unit }}</span>
+              </div>
+              {% comment %}
+                The price frozen when the item was requested, not the catalog's
+                current one: the line total is quantity times this, so showing
+                the live price would make the arithmetic look wrong.
+              {% endcomment %}
+              <div class="mt-0.5 text-xs tabular-nums text-stone-500">
+                &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
+                <span class="text-stone-300" aria-hidden="true">&middot;</span>
+                <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+              </div>
+            </div>
+
+            {% comment %}
+              Actions drop to their own full-width line on a narrow screen so
+              three thumb-sized targets never squeeze the product name, and sit
+              inline once there is room. Each carries the seller filter along.
+            {% endcomment %}
+            <div class="flex w-full shrink-0 items-center justify-end gap-0.5 sm:w-auto">
+              {% comment %}
+                Completing is confirmed because there is no undo yet: the row
+                leaves the dashboard and only /admin can bring it back. Drop the
+                confirm once undo exists.
+              {% endcomment %}
+              <button hx-post="{% url 'complete_item' item.pk %}"
+                      hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
+                      hx-confirm="Mark {{ item.product.name }} as ordered?"
+                      aria-label="Mark {{ item.product.name }} as ordered" title="Mark as ordered"
+                      class="rounded-md p-2 text-stone-400 hover:bg-[#eef4f0] hover:text-[#3d6047]">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+
+              <button hx-get="{% url 'dashboard' %}?editing={{ item.pk }}"
+                      hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
+                      aria-label="Edit {{ item.product.name }}" title="Edit"
+                      class="rounded-md p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-900">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                </svg>
+              </button>
+
+              <button hx-post="{% url 'delete_item' item.pk %}"
+                      hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
+                      hx-confirm="Remove {{ item.product.name }} from the list?"
+                      aria-label="Delete {{ item.product.name }}" title="Delete"
+                      class="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+  {% empty %}
+    <div class="mt-6 rounded-lg border border-stone-200 bg-white px-4 py-12 text-center">
+      <p class="font-medium text-stone-700">Nothing to order</p>
+      <p class="mt-1 text-sm text-stone-500">
+        Items appear here as soon as anyone flags a product as running low.
+      </p>
+    </div>
+  {% endfor %}
+</div>

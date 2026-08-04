@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Users &middot; Mentor{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+  <h1 class="text-2xl font-semibold tracking-tight">Users</h1>
+
+  <button type="button"
+          hx-get="{% url 'new_user' %}"
+          hx-target="#modal-body"
+          hx-swap="innerHTML"
+          hx-on::after-request="document.getElementById('modal').showModal()"
+          class="rounded-md bg-[#4a7355] px-4 py-2.5 text-base text-white hover:bg-[#3d6047]">
+    Add user
+  </button>
+</div>
+
+<div class="mt-4">
+  <label for="user-search" class="sr-only">Search users</label>
+  <input type="search" name="q" id="user-search" value="{{ query }}"
+         placeholder="Search by username or email…" autocomplete="off"
+         hx-get="{% url 'users' %}"
+         hx-trigger="input changed delay:200ms, search"
+         hx-target="#user-list"
+         hx-swap="outerHTML"
+         class="w-full rounded-md border border-stone-300 px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+</div>
+
+{% include "accounts/_user_list.html" %}
+
+{% comment %}
+  Outside the swapped list so an htmx swap cannot tear the dialog down while
+  someone is typing in it.
+{% endcomment %}
+<dialog id="modal">
+  <div id="modal-body"></div>
+</dialog>
+{% endblock %}

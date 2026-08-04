@@ -107,6 +107,39 @@ class OrderItemTests(TestCase):
         self.assertEqual(list(OrderItem.objects.open()), [second, first])
 
 
+class SellerViberLinkTests(TestCase):
+    """Numbers are stored the way a person writes them; the link needs them bare."""
+
+    def url_for(self, phone):
+        return Seller.objects.create(name=f"Seller {phone!r}", phone=phone).viber_url
+
+    def test_spaces_and_punctuation_come_out(self):
+        self.assertEqual(
+            self.url_for("+30 210 555 0198"), "viber://chat?number=%2B302105550198"
+        )
+        self.assertEqual(
+            self.url_for("(0030) 210-555.0198"), "viber://chat?number=00302105550198"
+        )
+
+    def test_the_plus_is_percent_encoded(self):
+        """A bare + in a query string means a space, so it has to be escaped."""
+        url = self.url_for("+306912345678")
+
+        self.assertIn("%2B", url)
+        self.assertNotIn("+", url)
+
+    def test_a_number_without_a_country_code_is_left_alone(self):
+        self.assertEqual(self.url_for("2105550198"), "viber://chat?number=2105550198")
+
+    def test_a_seller_with_no_phone_has_no_link(self):
+        self.assertEqual(self.url_for(""), "")
+
+    def test_a_phone_field_holding_only_punctuation_has_no_link(self):
+        """Otherwise the header would render a link to viber://chat?number=."""
+        self.assertEqual(self.url_for("n/a"), "")
+        self.assertEqual(self.url_for("+"), "")
+
+
 class ProductOrderNameTests(TestCase):
     """`order_name` is admin-only, so the guarantee worth testing is that it
     stays optional and never becomes required for the employee flow.

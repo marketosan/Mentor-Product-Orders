@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Products &middot; Mentor{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold tracking-tight">Products</h1>
+<p class="mt-1 text-sm text-stone-500">
+  New products are added while ordering, from the order list.
+</p>
+
+<div class="mt-4">
+  <label for="product-list-search" class="sr-only">Search products</label>
+  <input type="search" name="q" id="product-list-search" value="{{ query }}"
+         placeholder="Search by name, order name or seller…" autocomplete="off"
+         hx-get="{% url 'products' %}"
+         hx-trigger="input changed delay:200ms, search"
+         hx-target="#product-list"
+         hx-swap="outerHTML"
+         class="w-full rounded-md border border-stone-300 px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+</div>
+
+{% include "orders/_product_list.html" %}
+
+{% comment %}
+  Outside the swapped list so an htmx swap cannot tear the dialog down while
+  someone is typing in it.
+{% endcomment %}
+<dialog id="modal">
+  <div id="modal-body"></div>
+</dialog>
+{% endblock %}

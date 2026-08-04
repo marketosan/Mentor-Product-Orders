@@ -80,6 +80,26 @@ class EditOrderItemForm(UrgentCheckboxMixin, forms.ModelForm):
         return item
 
 
+class SellerForm(forms.ModelForm):
+    """Create or rename a supplier. Admin-only -- employees pick from the list."""
+
+    class Meta:
+        model = Seller
+        fields = ["name", "phone", "email", "notes"]
+
+    def clean_name(self):
+        # The model's unique constraint is case-sensitive; to a shop "Metro" and
+        # "metro" are one supplier, so the form is stricter. Excluding self keeps
+        # a rename that only changes capitalisation from clashing with itself.
+        name = self.cleaned_data["name"].strip()
+        clash = Seller.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            clash = clash.exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise forms.ValidationError(f"There is already a seller called “{clash.first().name}”.")
+        return name
+
+
 class ProductForm(forms.ModelForm):
     """Lets an employee add a product mid-order when it is missing from the
     catalog. Sellers are chosen from the existing list -- only admins create
@@ -88,7 +108,7 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ["name", "seller", "unit", "unit_price"]
+        fields = ["name", "order_name", "seller", "unit", "unit_price"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -108,6 +128,10 @@ class ProductForm(forms.ModelForm):
         # constraint would allow both.
         if name and seller:
             clash = Product.objects.filter(seller=seller, name__iexact=name.strip())
+            # Excluding self matters when editing: otherwise saving a product
+            # without renaming it would clash with the row being saved.
+            if self.instance.pk:
+                clash = clash.exclude(pk=self.instance.pk)
             if clash.exists():
                 raise forms.ValidationError(
                     f"{seller.name} already has a product called “{clash.first().name}”."

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard &middot; Mentor{% endblock %}
+
+{% block extra_head %}
+  <script src="{% static 'js/order-message.js' %}" defer></script>
+{% endblock %}
+
+{% block content %}
+  <h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+
+  {% comment %}
+    The body is a separate fragment so the seller filter can swap it on its
+    own, without a full page load.
+  {% endcomment %}
+  {% include "orders/_dashboard_body.html" %}
+
+  {% comment %}
+    Outside #dashboard-body so an htmx swap cannot tear the dialog down while
+    someone is typing in it. Product editing opens into here.
+  {% endcomment %}
+  <dialog id="modal">
+    <div id="modal-body"></div>
+  </dialog>
+{% endblock %}

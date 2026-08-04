@@ -100,6 +100,37 @@ class OrderListTests(OrdersTestCase):
 
         self.assertContains(response, "Nothing to order")
 
+    def test_each_row_shows_the_price_per_unit(self):
+        self.open_item()
+
+        response = self.client.get(reverse("order_list"))
+
+        self.assertContains(response, "&euro;1.15/l")
+
+    def test_the_unit_price_shown_is_the_frozen_one(self):
+        """The line total is quantity times this number, so showing the live
+        catalog price instead would make the row's arithmetic look wrong.
+        """
+        self.open_item(quantity="24")
+        Product.objects.filter(pk=self.milk.pk).update(unit_price=Decimal("99.00"))
+
+        response = self.client.get(reverse("order_list"))
+
+        self.assertContains(response, "&euro;1.15/l")
+        self.assertContains(response, "&euro;27.60")
+        self.assertNotContains(response, "&euro;99.00")
+
+    def test_it_pulls_in_the_stylesheet_and_scripts(self):
+        """The CSS and JS live in static/ rather than inline, so a page that
+        forgets to reference them looks fine to the server and is dead in the
+        browser -- no highlight, no toasts, no dropdown.
+        """
+        response = self.client.get(reverse("order_list"))
+
+        self.assertContains(response, "css/app.css")
+        self.assertContains(response, "js/app.js")
+        self.assertContains(response, "js/product-search.js")
+
     def test_the_panel_can_open_one_row_for_editing(self):
         item = self.open_item()
 
@@ -271,6 +302,17 @@ class ProductSearchViewTests(OrdersTestCase):
         self.assertContains(response, "No product matches")
         self.assertContains(response, "as a new product")
 
+    def test_no_template_syntax_leaks_into_the_dropdown(self):
+        """A `{# #}` comment only works on one line -- spread over two it stops
+        being a comment and renders to the user as literal text. This dropdown
+        shipped that way once.
+        """
+        response = self.client.get(reverse("product_search"), {"q": "milk"})
+        markup = response.content.decode()
+
+        for marker in ("{#", "#}", "{%", "%}"):
+            self.assertNotIn(marker, markup)
+
 
 class NewProductTests(OrdersTestCase):
     def test_it_prefills_the_name_from_the_search_box(self):
@@ -296,6 +338,19 @@ class NewProductTests(OrdersTestCase):
         product = Product.objects.get(name="Cinnamon syrup")
         self.assertEqual(product.created_by, self.maria)
         self.assertToast(response, "Cinnamon syrup added to the catalog")
+
+    def test_the_form_offers_the_order_name(self):
+        response = self.client.get(reverse("new_product"))
+
+        self.assertContains(response, 'name="order_name"')
+
+    def test_it_stores_the_order_name_when_given(self):
+        self.client.post(reverse("new_product"), {
+            "name": "Cinnamon syrup", "order_name": "SYR-CIN-1L",
+            "seller": self.dairy.pk, "unit": "l", "unit_price": "6.50",
+        })
+
+        self.assertEqual(Product.objects.get(name="Cinnamon syrup").order_name, "SYR-CIN-1L")
 
     def test_success_hands_the_product_back_to_the_quick_add_form(self):
         """The reply is a script that closes the dialog and resumes the order

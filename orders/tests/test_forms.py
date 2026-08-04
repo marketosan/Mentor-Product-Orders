@@ -174,6 +174,35 @@ class ProductFormTests(TestCase):
 
         self.assertNotIn(self.metro, form.fields["seller"].queryset)
 
-    def test_order_name_is_not_an_employee_field(self):
-        """It is admin-only, so it must never appear in the modal employees use."""
-        self.assertNotIn("order_name", ProductForm().fields)
+    def test_order_name_can_be_set_when_creating_a_product(self):
+        form = ProductForm({
+            "name": "Napkins", "order_name": "NAP-2PLY-250",
+            "seller": self.metro.pk, "unit": "box", "unit_price": "8.75",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+        self.assertEqual(form.save().order_name, "NAP-2PLY-250")
+
+    def test_order_name_stays_optional(self):
+        """Most products are called the same thing by both sides, so requiring
+        it would be a field to skip on every single add.
+        """
+        form = ProductForm({
+            "name": "Napkins", "seller": self.metro.pk, "unit": "box", "unit_price": "8.75",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+        self.assertEqual(form.save().order_name, "")
+
+    def test_a_duplicate_check_still_runs_on_the_shop_name(self):
+        """Two products differing only in order_name are still one product."""
+        Product.objects.create(
+            name="Napkins", seller=self.metro, unit="box", unit_price="8.75",
+            order_name="NAP-2PLY-250",
+        )
+        form = ProductForm({
+            "name": "napkins", "order_name": "SOMETHING-ELSE",
+            "seller": self.metro.pk, "unit": "box", "unit_price": "8.75",
+        })
+
+        self.assertFalse(form.is_valid())

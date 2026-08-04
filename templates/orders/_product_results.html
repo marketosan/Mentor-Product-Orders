@@ -1,6 +1,8 @@
 {% if query %}
-  {# role="listbox" is what makes the role="option" children legal, and what a
-     screen reader needs to announce this as a list of choices at all. #}
+  {% comment %}
+    role="listbox" is what makes the role="option" children legal, and what a
+    screen reader needs to announce this as a list of choices at all.
+  {% endcomment %}
   <div role="listbox" aria-label="Product results"
        class="overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
     {% for product in products %}

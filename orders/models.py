@@ -1,3 +1,6 @@
+import re
+from urllib.parse import quote
+
 from django.conf import settings
 from django.db import models
 
@@ -17,6 +20,28 @@ class Seller(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def viber_url(self) -> str:
+        """Deep link opening a Viber chat with this seller, or "" if no phone.
+
+        Numbers are stored the way a person writes them -- "+30 210 555 0198"
+        -- but the link needs them bare, so everything except digits and a
+        leading + comes out, and the + is percent-encoded.
+
+        The link only does anything on a device with Viber installed, and only
+        reaches sellers who are actually Viber users.
+        """
+        if not self.phone:
+            return ""
+
+        cleaned = re.sub(r"[^\d+]", "", self.phone)
+        # A + is only meaningful as the international prefix.
+        cleaned = "+" + cleaned.replace("+", "") if cleaned.startswith("+") else cleaned.replace("+", "")
+        if not cleaned.strip("+"):
+            return ""
+
+        return f"viber://chat?number={quote(cleaned, safe='')}"
 
 
 class Product(models.Model):

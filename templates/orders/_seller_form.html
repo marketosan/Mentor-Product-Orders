@@ -1,0 +1,77 @@
+{% comment %}
+  Body of the seller dialog, serving both add and edit. Inputs are text-base
+  (16px) and py-3 so phones do not zoom on focus and the targets stay
+  thumb-sized.
+{% endcomment %}
+<form hx-post="{% if seller %}{% url 'edit_seller' seller.pk %}{% else %}{% url 'new_seller' %}{% endif %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      hx-include="#seller-search"
+      class="rounded-2xl bg-white p-5 shadow-xl">
+  {% csrf_token %}
+
+  <h2 class="text-lg font-semibold tracking-tight">{{ title }}</h2>
+  <p class="mt-1 text-sm text-stone-500">
+    Only the name is required. Contact details make ordering one tap.
+  </p>
+
+  {% for error in form.non_field_errors %}
+    <p class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>
+  {% endfor %}
+
+  <div class="mt-4 space-y-4">
+    <div>
+      <label for="s-name" class="block text-sm font-medium">Name</label>
+      <input type="text" name="name" id="s-name" required autocomplete="off"
+             value="{{ form.name.value|default:'' }}"
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.name.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label for="s-phone" class="block text-sm font-medium">Phone</label>
+      {# type=tel brings up the number pad; the value is stored as typed. #}
+      <input type="tel" name="phone" id="s-phone" autocomplete="off" inputmode="tel"
+             placeholder="+30 210 555 0198"
+             value="{{ form.phone.value|default:'' }}"
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      <p class="mt-1 text-xs text-stone-500">Used for the Viber chat link.</p>
+      {% for error in form.phone.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label for="s-email" class="block text-sm font-medium">Email</label>
+      <input type="email" name="email" id="s-email" autocomplete="off"
+             value="{{ form.email.value|default:'' }}"
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.email.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label for="s-notes" class="block text-sm font-medium">Notes</label>
+      <textarea name="notes" id="s-notes" rows="2"
+                placeholder="Delivery days, minimum order…"
+                class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">{{ form.notes.value|default:'' }}</textarea>
+      {% for error in form.notes.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mt-6 flex gap-3">
+    <button type="button" onclick="document.getElementById('modal').close()"
+            class="flex-1 rounded-md border border-stone-300 px-4 py-3 text-base hover:bg-stone-50">
+      Cancel
+    </button>
+    <button type="submit"
+            class="flex-1 rounded-md bg-[#4a7355] px-4 py-3 text-base text-white hover:bg-[#3d6047]">
+      {% if seller %}Save{% else %}Add seller{% endif %}
+    </button>
+  </div>
+</form>

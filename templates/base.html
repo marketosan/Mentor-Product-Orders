@@ -1,4 +1,5 @@
-{% load static %}<!doctype html>
+{% load static %}
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -6,6 +7,14 @@
   <title>{% block title %}Mentor{% endblock %}</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% comment %}
+    defer so document.body exists by the time these run, and so neither blocks
+    parsing. Page-specific scripts go in the extra_head block below.
+  {% endcomment %}
+  <script src="{% static 'js/app.js' %}" defer></script>
+  <script src="{% static 'js/modal.js' %}" defer></script>
+  {% block extra_head %}{% endblock %}
 </head>
 {% comment %}
   Buttons that post from outside a <form> -- delete, for one -- have no CSRF
@@ -17,24 +26,47 @@
 {% if user.is_authenticated %}
 <header class="border-b-2 border-[#71a07c] bg-white">
   {% comment %}
-    Equal flexible columns either side of an auto-width middle keep the
-    wordmark centred on the screen, not merely centred in the space the
-    account details happen to leave over.
+    Wordmark, nav and account on one line. The account block takes ml-auto so
+    it hugs the right edge whatever the nav's width, and the whole row wraps
+    rather than crushing itself on a narrow screen.
+
+    Dashboard and Sellers are admin-only, so an employee sees a single link --
+    correct, if sparse. resolver_match.url_name marks the current page, which
+    also carries aria-current for screen readers.
   {% endcomment %}
-  <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3 sm:px-6">
-    <span aria-hidden="true"></span>
+  <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6">
     {% comment %}
       #71a07c measures 2.99:1 on white, below the 3:1 floor even for large
       text, so the wordmark takes a darker sibling of the same hue at 5.42:1.
     {% endcomment %}
-    <a href="{% url 'order_list' %}" class="text-2xl font-bold tracking-tight text-[#4a7355]">Mentor</a>
-    <div class="flex min-w-0 items-center justify-end gap-3 text-sm">
-      <span class="text-stone-500">
-        {{ user.username }}{% if user.is_shop_admin %} &middot; admin{% endif %}
-      </span>
+    <a href="{% url 'order_list' %}" class="text-xl font-bold tracking-tight text-[#4a7355]">Mentor</a>
+
+    {% with current=request.resolver_match.url_name %}
+      {# Negative margin so the first pill's padding lines up with the wordmark. #}
+      <nav aria-label="Main" class="-mx-1 flex items-center gap-1 overflow-x-auto">
+        {% for name, label, admin_only in nav_links %}
+          {% if not admin_only or user.is_shop_admin %}
+            <a href="{% url name %}"
+               {% if current == name %}aria-current="page"{% endif %}
+               class="shrink-0 rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-colors
+                      {% if current == name %}
+                        bg-[#eef4f0] font-medium text-[#3d6047]
+                      {% else %}
+                        text-stone-500 hover:bg-stone-100 hover:text-stone-900
+                      {% endif %}">
+              {{ label }}
+            </a>
+          {% endif %}
+        {% endfor %}
+      </nav>
+    {% endwith %}
+
+    <div class="ml-auto flex min-w-0 items-center gap-3 text-sm">
+      {# Just the username: the Dashboard and Sellers pills already only appear for admins. #}
+      <span class="truncate text-stone-500">{{ user.username }}</span>
       <form method="post" action="{% url 'logout' %}">
         {% csrf_token %}
-        <button class="text-stone-500 hover:text-stone-900">Log out</button>
+        <button class="shrink-0 text-stone-500 hover:text-stone-900">Log out</button>
       </form>
     </div>
   </div>
@@ -50,65 +82,5 @@
   HX-Trigger header, so nothing about it has to live in the swapped markup.
 {% endcomment %}
 <div id="toasts" aria-live="polite" aria-atomic="false"></div>
-
-<style>
-  /* Plain CSS: these elements are built at runtime, where a CDN Tailwind
-     build has no markup to generate classes from. */
-  #toasts {
-    position: fixed;
-    inset-inline: 0;
-    bottom: 1rem;
-    z-index: 60;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: .5rem;
-    padding-inline: 1rem;
-    pointer-events: none;
-  }
-  .toast {
-    max-width: 100%;
-    border-radius: 9999px;
-    background: #3d6047;
-    padding: .55rem 1.1rem;
-    font-size: .875rem;
-    color: #fafaf9;
-    box-shadow: 0 8px 24px rgb(0 0 0 / .18);
-    opacity: 0;
-    transform: translateY(.5rem);
-    transition: opacity .2s ease, transform .2s ease;
-  }
-  .toast[data-visible="true"] { opacity: 1; transform: translateY(0); }
-  @media (prefers-reduced-motion: reduce) {
-    .toast { transition: none; }
-  }
-</style>
-
-<script>
-  // htmx ignores 4xx responses by default. The server answers an invalid form
-  // with 422 and the re-rendered form, so opt that one status back into swapping.
-  document.body.addEventListener("htmx:beforeSwap", function (event) {
-    if (event.detail.xhr.status === 422) {
-      event.detail.shouldSwap = true;
-      event.detail.isError = false;
-    }
-  });
-
-  // Fired by the HX-Trigger header the views attach to a successful action.
-  document.body.addEventListener("toast", function (event) {
-    const host = document.getElementById("toasts");
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    toast.textContent = event.detail.message;
-    host.appendChild(toast);
-
-    requestAnimationFrame(() => toast.setAttribute("data-visible", "true"));
-    setTimeout(function () {
-      toast.removeAttribute("data-visible");
-      toast.addEventListener("transitionend", () => toast.remove(), { once: true });
-      setTimeout(() => toast.remove(), 500);   // fallback if the transition never fires
-    }, 2800);
-  });
-</script>
 </body>
 </html>

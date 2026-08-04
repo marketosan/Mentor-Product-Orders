@@ -65,6 +65,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'orders.context_processors.navigation',
             ],
         },
     },
@@ -119,6 +120,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Shared CSS and JS live at the project root rather than inside one app,
+# since base.html serves every page.
+STATICFILES_DIRS = [BASE_DIR / 'static']
 
 
 # Auth

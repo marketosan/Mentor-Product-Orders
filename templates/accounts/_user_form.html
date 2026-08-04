@@ -1,0 +1,88 @@
+{% comment %}
+  Body of the user dialog, serving both add and edit. Inputs are text-base
+  (16px) and py-3 so phones do not zoom on focus and the targets stay
+  thumb-sized.
+{% endcomment %}
+<form hx-post="{% if account %}{% url 'edit_user' account.pk %}{% else %}{% url 'new_user' %}{% endif %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      hx-include="#user-search"
+      class="rounded-2xl bg-white p-5 shadow-xl">
+  {% csrf_token %}
+
+  <h2 class="text-lg font-semibold tracking-tight">{{ title }}</h2>
+
+  {% for error in form.non_field_errors %}
+    <p class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>
+  {% endfor %}
+
+  <div class="mt-4 space-y-4">
+    <div>
+      <label for="u-username" class="block text-sm font-medium">Username</label>
+      <input type="text" name="username" id="u-username" required autocomplete="off"
+             value="{{ form.username.value|default:'' }}"
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.username.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label for="u-email" class="block text-sm font-medium">Email</label>
+      <input type="email" name="email" id="u-email" required autocomplete="off"
+             value="{{ form.email.value|default:'' }}"
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.email.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label for="u-role" class="block text-sm font-medium">Role</label>
+      <select name="role" id="u-role" required
+              class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+        {% for value, label in form.fields.role.choices %}
+          <option value="{{ value }}" {% if form.role.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <p class="mt-1 text-xs text-stone-500">
+        Admins also see the dashboard, sellers and this page.
+      </p>
+      {% for error in form.role.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div class="border-t border-stone-200 pt-4">
+      <label for="u-password1" class="block text-sm font-medium">
+        New Password
+        {% if account %}<span class="font-normal text-stone-400">(leave blank to keep the current one)</span>{% endif %}
+      </label>
+      <input type="password" name="password1" id="u-password1" autocomplete="new-password"
+             {% if not account %}required{% endif %}
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.password1.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <label for="u-password2" class="mt-3 block text-sm font-medium">Confirm password</label>
+      <input type="password" name="password2" id="u-password2" autocomplete="new-password"
+             {% if not account %}required{% endif %}
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.password2.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mt-6 flex gap-3">
+    <button type="button" onclick="document.getElementById('modal').close()"
+            class="flex-1 rounded-md border border-stone-300 px-4 py-3 text-base hover:bg-stone-50">
+      Cancel
+    </button>
+    <button type="submit"
+            class="flex-1 rounded-md bg-[#4a7355] px-4 py-3 text-base text-white hover:bg-[#3d6047]">
+      {% if account %}Save{% else %}Add user{% endif %}
+    </button>
+  </div>
+</form>

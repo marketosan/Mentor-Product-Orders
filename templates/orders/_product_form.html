@@ -1,15 +1,32 @@
 {% comment %}
-  Body of the new-product dialog. Inputs are text-base (16px) and py-3 so
-  phones do not zoom on focus and the targets stay thumb-sized.
+  Body of the product dialog, serving both add and edit. Inputs are text-base
+  (16px) and py-3 so phones do not zoom on focus and the targets stay
+  thumb-sized.
+
+  `origin` rides along on edits: the form posts from inside the dialog and so
+  always targets #modal-body, which does not say which page opened it. `q`
+  rides along too, so saving from the products page keeps the current search
+  instead of resetting to the whole catalog.
 {% endcomment %}
-<form hx-post="{% url 'new_product' %}"
+<form hx-post="{% if product %}{% url 'edit_product' product.pk %}{% else %}{% url 'new_product' %}{% endif %}"
       hx-target="#modal-body"
       hx-swap="innerHTML"
       class="rounded-2xl bg-white p-5 shadow-xl">
   {% csrf_token %}
+  {% if product %}
+    <input type="hidden" name="origin" value="{{ origin }}">
+    <input type="hidden" name="q" value="{{ query }}">
+  {% endif %}
 
-  <h2 class="text-lg font-semibold tracking-tight">New product</h2>
-  <p class="mt-1 text-sm text-stone-500">Adds it to the catalog so anyone can order it.</p>
+  <h2 class="text-lg font-semibold tracking-tight">{{ title }}</h2>
+  {% if product %}
+    <p class="mt-1 text-sm text-stone-500">
+      Changes apply to the catalog. Items already on the list keep the price
+      they were requested at.
+    </p>
+  {% else %}
+    <p class="mt-1 text-sm text-stone-500">Adds it to the catalog so anyone can order it.</p>
+  {% endif %}
 
   {% if not sellers %}
     <p class="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -28,6 +45,26 @@
                value="{{ form.name.value|default:'' }}"
                class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
         {% for error in form.name.errors %}
+          <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+        {% endfor %}
+      </div>
+
+      {% comment %}
+        Optional, and directly under the name because it is the same thing said
+        the seller's way. Shown only on the admin dashboard, where an order is
+        actually placed -- it never appears in search or the order list.
+      {% endcomment %}
+      <div>
+        <label for="p-order-name" class="block text-sm font-medium">
+          Order name <span class="font-normal text-stone-400">(optional)</span>
+        </label>
+        <input type="text" name="order_name" id="p-order-name" autocomplete="off"
+               value="{{ form.order_name.value|default:'' }}"
+               class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+        <p class="mt-1 text-xs text-stone-500">
+          What the seller calls it, if that differs. Shown when placing the order.
+        </p>
+        {% for error in form.order_name.errors %}
           <p class="mt-1 text-sm text-red-600">{{ error }}</p>
         {% endfor %}
       </div>
@@ -89,7 +126,7 @@
     {% if sellers %}
       <button type="submit"
               class="flex-1 rounded-md bg-[#4a7355] px-4 py-3 text-base text-white hover:bg-[#3d6047]">
-        Add product
+        {% if product %}Save{% else %}Add product{% endif %}
       </button>
     {% endif %}
   </div>

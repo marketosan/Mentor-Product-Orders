@@ -105,7 +105,20 @@
 
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span class="font-medium leading-snug text-stone-900">{{ item.product.name }}</span>
+              {% comment %}
+                The name opens the catalog entry for editing -- every field,
+                including the seller's own order name. Editing the row itself
+                (quantity, urgency) is the pencil on the right; these are
+                different things, so they are different controls.
+              {% endcomment %}
+              <button type="button"
+                      hx-get="{% url 'edit_product' item.product.pk %}?origin=panel"
+                      hx-target="#modal-body" hx-swap="innerHTML"
+                      hx-on::after-request="document.getElementById('modal').showModal()"
+                      title="Edit {{ item.product.name }} in the catalog"
+                      class="text-left font-medium leading-snug text-stone-900 underline decoration-stone-300 decoration-dotted underline-offset-4 hover:decoration-stone-900">
+                {{ item.product.name }}
+              </button>
               {% if item.urgency == "high" %}
                 <span class="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold tracking-wide text-red-700 uppercase">urgent</span>
               {% endif %}
@@ -121,7 +134,16 @@
             <div class="leading-tight font-semibold tabular-nums text-stone-900">
               {{ item.quantity|floatformat:"-3" }}<span class="ml-1 text-sm font-normal text-stone-500">{{ item.product.unit }}</span>
             </div>
-            <div class="mt-0.5 text-xs tabular-nums text-stone-500">&euro;{{ item.line_total|floatformat:2 }}</div>
+            {% comment %}
+              The price frozen when the item was requested, not the catalog's
+              current one: the line total is quantity times this, so showing
+              the live price would make the arithmetic look wrong.
+            {% endcomment %}
+            <div class="mt-0.5 text-xs tabular-nums text-stone-500">
+              &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
+              <span class="text-stone-300" aria-hidden="true">&middot;</span>
+              <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+            </div>
           </div>
 
           <div class="flex shrink-0 items-center gap-0.5">
