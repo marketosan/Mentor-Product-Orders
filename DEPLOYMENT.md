@@ -36,11 +36,38 @@ Get it from [python.org](https://www.python.org/downloads/windows/) — **not**
 the Microsoft Store version, which sandboxes file access in ways that trip up
 service managers.
 
-During install, tick **"Add python.exe to PATH"**. Then check:
+**Version:** 3.12, 3.13 or 3.14 all work. 3.13 is the safer pick for a machine
+you will not babysit: if you ever add a package with compiled parts, prebuilt
+wheels appear for the older version first.
+
+**Where:** in the installer, tick both
+
+- ☑ **Add python.exe to PATH**
+- ☑ **Install for all users**
+
+"Install for all users" puts it in `C:\Program Files\Python313` instead of
+`C:\Users\<you>\AppData\Local\...`. That matters at step 8: a Windows service
+runs as a different account, which cannot see another user's `AppData` folder.
+Installing per-user works fine until you try to make Mentor start on boot, and
+then fails with a confusing "file not found".
+
+If you would rather avoid the space in "Program Files", choose **Customize
+installation** and set the path to `C:\Python313`. Either is fine.
+
+Check it:
 
 ```bat
 python --version
+where python
 ```
+
+Both should answer, and the path should match where you installed it. If
+`where python` prints something under `WindowsApps`, the Store version is
+shadowing yours — remove it from **Settings → Apps → App execution aliases**.
+
+The project's own virtual environment (step 3) lives in `C:\mentor\.venv` and
+is created from this Python. It records the path, so moving or uninstalling
+Python later breaks the venv — deleting `.venv` and redoing step 3 fixes it.
 
 ## 2. Get the code onto the machine
 
