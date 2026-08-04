@@ -23,11 +23,41 @@ This file records the decisions and constraints that the spec does not.
 
 ## Stack
 
-Django 6 · HTMX 2 · Tailwind 4 (CDN, no build step) · SQLite · Django auth
-with a custom `accounts.User`.
+Django 6 · HTMX 2 · Tailwind 4 (CDN, no build step) · SQLite in development,
+MariaDB in the shop · Django auth with a custom `accounts.User`.
 
 **Django 6, not the spec's Django 5** — this machine runs Python 3.14, which
 Django 5.2 does not support.
+
+## Configuration and deployment
+
+Everything environment-specific is read from a **`.env`** beside `manage.py`
+(gitignored; `.env.example` is the committed template). Real environment
+variables override the file. Full deployment steps: `DEPLOYMENT.md`.
+
+- **`DEBUG` defaults to False**, and with it off the app **refuses to start**
+  without a `SECRET_KEY`. Both are deliberate: forgetting a setting should
+  fail on a laptop rather than quietly ship tracebacks to the shop. A fresh
+  clone therefore needs a `.env` before it will run at all.
+- `ALLOWED_HOSTS` takes bare hostnames; `CSRF_TRUSTED_ORIGINS` needs the
+  scheme. Getting the second wrong makes pages load and every form fail.
+- All the HTTPS-dependent settings hang off one `HTTPS` flag, off by default.
+  Turning it on before Apache serves a certificate does not warn — it makes
+  cookies secure-only and nobody can log in.
+- `STATIC_ROOT` + `collectstatic` are required in production: with `DEBUG` off
+  Django serves no static files, so skipping it yields a working app with no
+  styling at all.
+- Unhandled exceptions go to `logs/mentor.log` (rotating). With `DEBUG` off
+  they would otherwise go nowhere.
+- **Database**: SQLite unless `DB_ENGINE=mysql`, which switches to MariaDB with
+  utf8mb4 and `STRICT_TRANS_TABLES`. `config/__init__.py` prefers `mysqlclient`
+  and falls back to **PyMySQL** — pure Python, so `pip install` cannot fail for
+  want of a C compiler, which matters on Windows and a new Python. Do not
+  override `pymysql.version_info` there: PyMySQL already reports the
+  mysqlclient release it emulates, and overriding it breaks Django's check.
+- **Serving**: `serve.py` runs Waitress (gunicorn is not an option on Windows);
+  Apache reverse-proxies to it and serves `/static/` itself. Django does not
+  run inside Apache — `mod_wsgi` is compiled and version-tied.
 
 ## Design constraints
 

@@ -8,6 +8,29 @@ Full spec: [`specs/mentor-app-spec.md`](specs/mentor-app-spec.md)
 
 Django 6 · HTMX · Tailwind (CDN) · SQLite
 
+Deploying it on the shop's machine is a different job: see
+[`DEPLOYMENT.md`](DEPLOYMENT.md).
+
+## First time on a new machine
+
+Settings come from a `.env` file, which is gitignored — so a fresh clone has
+none, and **the app will not start until you make one**:
+
+```bash
+cd ~/projects/Mentor-Product-Orders
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+cp .env.example .env          # then open it; DEBUG=1 is enough for local work
+.venv/bin/python manage.py migrate
+.venv/bin/python manage.py seed_demo
+```
+
+`DEBUG` defaults to **off**, and with it off the app refuses to start without a
+`SECRET_KEY`. That is deliberate: forgetting the setting should fail on a
+laptop, not quietly ship tracebacks to the shop. For local work `DEBUG=1` in
+`.env` is all you need — the key is then optional.
+
 ## Running it
 
 ```bash
