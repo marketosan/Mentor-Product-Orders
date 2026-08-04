@@ -72,6 +72,11 @@ AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves everything in STATIC_ROOT itself, so the app does not depend on a
+    # web server being configured to do it. On shared hosting -- cPanel and
+    # friends -- there is often no way to add an Apache alias at all. Must sit
+    # directly after SecurityMiddleware and before everything else.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

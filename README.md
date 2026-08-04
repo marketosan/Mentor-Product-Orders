@@ -8,8 +8,12 @@ Full spec: [`specs/mentor-app-spec.md`](specs/mentor-app-spec.md)
 
 Django 6 · HTMX · Tailwind (CDN) · SQLite
 
-Deploying it on the shop's machine is a different job: see
-[`DEPLOYMENT.md`](DEPLOYMENT.md).
+Deploying is a different job, and there are two guides depending on where:
+
+- [`DEPLOYMENT_CPANEL.md`](DEPLOYMENT_CPANEL.md) — on cPanel hosting, reachable
+  from anywhere. Passenger runs the app, AutoSSL gives it HTTPS.
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — on a machine in the shop, over the local
+  network, with XAMPP's Apache in front.
 
 ## First time on a new machine
 

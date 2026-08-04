@@ -65,7 +65,7 @@ Both should answer, and the path should match where you installed it. If
 `where python` prints something under `WindowsApps`, the Store version is
 shadowing yours — remove it from **Settings → Apps → App execution aliases**.
 
-The project's own virtual environment (step 3) lives in `C:\mentor\.venv` and
+The project's own virtual environment (step 3) lives in `C:\Users\marketos\Desktop\mentor.venv` and
 is created from this Python. It records the path, so moving or uninstalling
 Python later breaks the venv — deleting `.venv` and redoing step 3 fixes it.
 
@@ -302,7 +302,7 @@ The `.bat` needs someone to double-click it. To have Windows start it
 automatically, install [NSSM](https://nssm.cc/):
 
 ```bat
-nssm install Mentor "C:\mentor\.venv\Scripts\python.exe" "C:\mentor\serve.py"
+nssm install Mentor "C:\Users\marketos\Desktop\mentor.venv\Scripts\python.exe" "C:\Users\marketos\Desktop\mentorserve.py"
 nssm set Mentor AppDirectory C:\mentor
 nssm set Mentor Start SERVICE_AUTO_START
 nssm start Mentor
@@ -331,7 +331,7 @@ address changes, every phone's bookmark breaks.
 
 ## Backups
 
-The whole shop is in one file, `C:\mentor\db.sqlite3`. Backing up is copying
+The whole shop is in one file, `C:\Users\marketos\Desktop\mentordb.sqlite3`. Backing up is copying
 it — this is the part of SQLite that is genuinely nicer than a database server.
 
 Use SQLite's own backup command rather than plain `copy`. It takes a consistent

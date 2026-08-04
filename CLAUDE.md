@@ -63,9 +63,20 @@ variables override the file. Full deployment steps: `DEPLOYMENT.md`.
     pure Python, so `pip install` cannot fail for want of a C compiler. Do not
     override `pymysql.version_info` there: PyMySQL already reports the
     mysqlclient release it emulates, and overriding it breaks Django's check.
-- **Serving**: `serve.py` runs Waitress (gunicorn is not an option on Windows);
-  Apache reverse-proxies to it and serves `/static/` itself. Django does not
-  run inside Apache — `mod_wsgi` is compiled and version-tied.
+- **Static files are served by WhiteNoise**, from inside the app. That is what
+  makes shared hosting possible: on cPanel there is no way to add an Apache
+  alias. The middleware must stay directly after `SecurityMiddleware`. Storage
+  is left at Django's default on purpose — a manifest storage would need
+  `collectstatic` to have run before the tests could resolve `{% static %}`.
+- **Two deployment targets, two guides.** `DEPLOYMENT_CPANEL.md` (public, on
+  cPanel; Passenger imports `passenger_wsgi.py`, AutoSSL provides HTTPS) and
+  `DEPLOYMENT.md` (the shop's own machine on the LAN; Apache proxies to
+  `serve.py`, which runs Waitress because gunicorn does not run on Windows).
+  Django never runs *inside* Apache — `mod_wsgi` is compiled and version-tied.
+- On cPanel the code lives outside `public_html` and `DB_NAME` points outside
+  the app directory. Both matter: anything under `public_html` is downloadable,
+  including `db.sqlite3`, and a database inside the repo is one `git pull` away
+  from trouble.
 
 ## Design constraints
 
