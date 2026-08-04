@@ -88,14 +88,12 @@ python -m venv .venv
 ```
 
 Nothing here needs a C compiler, so this step cannot fail for want of one.
-`PyMySQL` is in the list for the day someone points this at MySQL; on SQLite it
-is never imported.
 
 ## 4. The database
 
 **Nothing to do.** The app uses SQLite: a single file, `db.sqlite3`, created
 beside `manage.py` by the migrate step below. No server, no credentials, no
-XAMPP MySQL involved.
+database server involved.
 
 That is the deployment choice, not a development shortcut. The usual "don't use
 SQLite in production" advice is about several web servers sharing one database
@@ -103,21 +101,6 @@ over a network, and about heavy concurrent writes. Neither happens here: one
 machine runs everything off one disk, and a coffee shop's ordering tool is
 mostly reads with an occasional write. Adding a database server would buy
 nothing and cost a process that has to stay running.
-
-Switching later is one line in `.env` — `DB_ENGINE` — not a rewrite.
-
-> **Not MySQL, and not by choice.** XAMPP bundles **MariaDB 10.4**; Django 6
-> requires **10.6 or later** and refuses to connect:
->
-> ```
-> NotSupportedError: MariaDB 10.6 or later is required (found 10.4.32).
-> ```
->
-> No setting fixes that. It needs a newer MariaDB installed separately from
-> XAMPP, or an older Django — which would mean the shop running a different
-> Django from the one the app is built and tested against. If you do want
-> MySQL later, that is the work involved; `DB_ENGINE=mysql` and the rest of the
-> `DB_*` settings are already in place for it.
 
 ## 5. Write the .env file
 
@@ -136,8 +119,6 @@ DEBUG=0
 ALLOWED_HOSTS=192.168.1.50,localhost,127.0.0.1
 CSRF_TRUSTED_ORIGINS=http://192.168.1.50,http://localhost
 TIME_ZONE=Europe/Athens
-
-DB_ENGINE=sqlite
 
 HTTPS=0
 ```
@@ -308,7 +289,7 @@ nssm set Mentor Start SERVICE_AUTO_START
 nssm start Mentor
 ```
 
-Also set XAMPP's Apache and MySQL to start as services, from the XAMPP panel's
+Also set XAMPP's Apache to start as a service, from the XAMPP panel's
 config checkboxes. Otherwise a power cut means someone has to log in and start
 three things by hand.
 
@@ -373,8 +354,6 @@ need restarting unless the vhost changed.
 | **502 / "Service Unavailable"** | Waitress is not running. Apache is up, the app is not. |
 | **Nobody can log in after enabling HTTPS** | `HTTPS=1` while Apache still serves plain `http`. |
 | **Works on the machine, not on phones** | Firewall rule, or the machine's IP changed. |
-| **`MariaDB 10.6 or later is required`** | `DB_ENGINE=mysql` in `.env`. XAMPP's MariaDB is too old for Django 6 — set it back to `sqlite`. |
-| **`Access denied for user ... to database`** | Same cause: you are on the MySQL path. Set `DB_ENGINE=sqlite`. |
 
 ## Not done yet
 
@@ -391,7 +370,3 @@ need restarting unless the vhost changed.
 
   then `manage.py loaddata data.json` on the new one after migrating. Passwords
   survive; they are hashed in the dump.
-- **MySQL is not available on XAMPP as it ships** — MariaDB 10.4 against
-  Django 6's floor of 10.6. See step 4. Nothing in the app depends on which
-  database is underneath, so this is a swap whenever a supported MariaDB is
-  actually installed.

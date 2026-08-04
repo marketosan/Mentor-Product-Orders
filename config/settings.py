@@ -108,36 +108,20 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 #
-# SQLite by default, which is a real choice rather than a placeholder: one shop,
-# a handful of users, and reads vastly outnumbering writes. Set DB_ENGINE=mysql
-# to point at XAMPP's MariaDB instead -- the models and queries are unchanged
-# either way.
+# SQLite, and a real choice rather than a placeholder: one shop, a handful of
+# users, reads far outnumbering writes, and everything on one machine. The
+# usual objections -- several web servers sharing a database over a network,
+# heavy concurrent writes -- describe a different application.
+#
+# DB_NAME points the file somewhere other than the project directory, which is
+# what deployments want: outside the web root, and out of reach of a git pull.
 
-if os.environ.get("DB_ENGINE", "sqlite").lower() in {"mysql", "mariadb"}:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": os.environ.get("DB_NAME", "mentor"),
-            "USER": os.environ.get("DB_USER", "root"),
-            "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-            "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
-            "PORT": os.environ.get("DB_PORT", "3306"),
-            "OPTIONS": {
-                # utf8mb4 so Greek product names and emoji survive the round
-                # trip; STRICT_TRANS_TABLES so MySQL rejects bad data instead
-                # of silently truncating it, which is SQLite's behaviour here.
-                "charset": "utf8mb4",
-                "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.environ.get("DB_NAME") or BASE_DIR / "db.sqlite3",
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": os.environ.get("DB_NAME") or BASE_DIR / "db.sqlite3",
-        }
-    }
+}
 
 
 # Password validation

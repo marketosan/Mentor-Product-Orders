@@ -130,7 +130,6 @@ On the Setup Python App page, under **Environment variables**, add:
 | `ALLOWED_HOSTS` | `mentor.yourdomain.com` |
 | `CSRF_TRUSTED_ORIGINS` | `https://mentor.yourdomain.com` |
 | `TIME_ZONE` | `Europe/Athens` |
-| `DB_ENGINE` | `sqlite` |
 | `DB_NAME` | `/home/<user>/mentor-data/mentor.sqlite3` |
 | `HTTPS` | `0` for now — step 8 turns it on |
 
