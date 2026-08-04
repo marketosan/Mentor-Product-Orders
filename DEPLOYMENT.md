@@ -146,6 +146,10 @@ Visit `http://<this-pc-ip>:8000`. It will look unstyled — Apache is not servin
 
 ## 7. Point Apache at it
 
+> **Running on this machine only, to try it out?** Use the port-8080 vhost in
+> [Localhost only](#localhost-only) below instead of the one here, and skip
+> steps 9 and the static-IP note. Everything else is the same.
+
 Open `C:\xampp\apache\conf\httpd.conf` and make sure these three are **not**
 commented out:
 
@@ -190,6 +194,66 @@ work.
 Restart Apache from the XAMPP panel. If it refuses to start, the panel's
 **Logs → Apache (error.log)** button says why; a typo in this file is the usual
 cause.
+
+### Localhost only
+
+Careful here: **defining a vhost makes it the default for anything that does
+not match another one**, and `ProxyPass /` then swallows the whole of
+`htdocs` — phpMyAdmin included. You would have Mentor and no way into the
+database.
+
+The clean way to avoid that is to leave port 80 alone and give Mentor its own.
+In `httpd.conf`, next to the existing `Listen 80`:
+
+```apache
+Listen 8080
+```
+
+Then in `httpd-vhosts.conf`, instead of the vhost above:
+
+```apache
+<VirtualHost *:8080>
+    ServerName localhost
+
+    Alias /static/ "C:/mentor/staticfiles/"
+    <Directory "C:/mentor/staticfiles">
+        Require all granted
+        Options -Indexes
+    </Directory>
+
+    ProxyPreserveHost On
+    ProxyPass        /static/ !
+    ProxyPass        / http://127.0.0.1:8000/
+    ProxyPassReverse / http://127.0.0.1:8000/
+
+    RequestHeader set X-Forwarded-Proto "http"
+
+    ErrorLog  "logs/mentor-error.log"
+    CustomLog "logs/mentor-access.log" combined
+</VirtualHost>
+```
+
+Now:
+
+| | |
+|---|---|
+| <http://localhost:8080/> | Mentor |
+| <http://localhost/phpmyadmin> | still works, untouched |
+
+`.env` for this case:
+
+```ini
+ALLOWED_HOSTS=localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=http://localhost:8080,http://127.0.0.1:8080
+```
+
+The **port belongs in `CSRF_TRUSTED_ORIGINS`** and must not appear in
+`ALLOWED_HOSTS`. Django compares origins including the port, and hostnames
+without it.
+
+Skipping Apache entirely and just running `serve.py` does work, but the page
+arrives with no styling: with `DEBUG=0` Django serves no static files, and
+there is then nothing serving `/static/`.
 
 ## 8. Start the app
 
