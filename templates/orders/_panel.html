@@ -140,9 +140,13 @@
               the live price would make the arithmetic look wrong.
             {% endcomment %}
             <div class="mt-0.5 text-xs tabular-nums text-stone-500">
-              &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
-              <span class="text-stone-300" aria-hidden="true">&middot;</span>
-              <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+              {% if item.unit_price_snapshot is None %}
+                <span class="text-stone-400 italic">no price</span>
+              {% else %}
+                &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
+                <span class="text-stone-300" aria-hidden="true">&middot;</span>
+                <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+              {% endif %}
             </div>
           </div>
 

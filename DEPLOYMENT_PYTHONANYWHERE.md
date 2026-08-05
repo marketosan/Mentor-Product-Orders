@@ -50,7 +50,7 @@ cd ~
 git clone https://github.com/marketosan/Mentor-Product-Orders.git mentor
 ```
 
-That puts it at `/home/yourname/mentor`. Everywhere below, replace `yourname`
+That puts it at `/home/kmaris/mentor`. Everywhere below, replace `yourname`
 with your actual PythonAnywhere username.
 
 ## 3. Create the virtualenv
@@ -65,7 +65,7 @@ pip install -r ~/mentor/requirements.txt
 `mkvirtualenv` both creates and activates it; the prompt gains a `(mentor)`
 prefix. In a new console later, `workon mentor` gets you back.
 
-Note the path it created — `/home/yourname/.virtualenvs/mentor` — the Web tab
+Note the path it created — `/home/kmaris/.virtualenvs/mentor` — the Web tab
 asks for it in step 6.
 
 ## 4. Configure it
@@ -87,7 +87,7 @@ DEBUG=0
 ALLOWED_HOSTS=yourname.pythonanywhere.com
 CSRF_TRUSTED_ORIGINS=https://yourname.pythonanywhere.com
 TIME_ZONE=Europe/Athens
-DB_NAME=/home/yourname/mentor-data/mentor.sqlite3
+DB_NAME=/home/kmaris/mentor-data/mentor.sqlite3
 HTTPS=1
 ```
 
@@ -142,9 +142,9 @@ Then on the Web tab that appears, set:
 
 | Field | Value |
 |---|---|
-| **Source code** | `/home/yourname/mentor` |
-| **Working directory** | `/home/yourname/mentor` |
-| **Virtualenv** | `/home/yourname/.virtualenvs/mentor` |
+| **Source code** | `/home/kmaris/mentor` |
+| **Working directory** | `/home/kmaris/mentor` |
+| **Virtualenv** | `/home/kmaris/.virtualenvs/mentor` |
 
 ## 7. Point the WSGI file at Mentor
 
@@ -156,7 +156,7 @@ put this in its place:
 import os
 import sys
 
-path = "/home/yourname/mentor"
+path = "/home/kmaris/mentor"
 if path not in sys.path:
     sys.path.insert(0, path)
 
@@ -181,7 +181,7 @@ HTTPS.
 
 Static files are served by WhiteNoise from inside the app, so there is no
 static-files mapping to configure. You *can* add one on the Web tab
-(URL `/static/`, directory `/home/yourname/mentor/staticfiles`) to have their
+(URL `/static/`, directory `/home/kmaris/mentor/staticfiles`) to have their
 web server handle it instead — slightly faster, and it does not consume your
 CPU quota. Optional.
 
@@ -224,14 +224,111 @@ Running all three when unsure is harmless — each does nothing if there is
 nothing to do.
 
 **Back up before a migration.** A `git pull` can be undone; a migration often
-cannot. Check whether one is coming:
+cannot. See the next section.
+
+## When a change touches the database
+
+Some changes alter the shape of the database, not just the code — a new field,
+a field becoming optional, a field removed. Django records each as a
+**migration**, a numbered file under `orders/migrations/`, and `manage.py
+migrate` applies the ones the database has not seen yet.
+
+**The code and the database have to move together.** Pull code that expects a
+column the database does not have and every page 500s until you migrate.
+
+### 1. Find out whether there is one
+
+After pulling, before anything else:
 
 ```bash
 python manage.py migrate --plan
 ```
 
-"No planned migration operations" means nothing to undo. Anything else, take a
-backup first.
+```
+No planned migration operations.        ← nothing to do, carry on
+```
+
+```
+Planned operations:
+orders.0003_alter_orderitem_unit_price_snapshot_and_more
+    Alter field unit_price on product   ← there is one, keep reading
+```
+
+### 2. See what it will actually do
+
+```bash
+python manage.py sqlmigrate orders 0003
+```
+
+That prints the SQL without running it. You are looking for which of these it
+is:
+
+| Kind | Example | Risk |
+|---|---|---|
+| Adds a column | `order_name` in 0002 | **Safe.** Existing rows get the default. |
+| Makes a column optional | `unit_price` in 0003 | **Safe.** Nothing is lost; old values stay. |
+| Adds an index or constraint | | Safe, though slow on a big table. |
+| **Removes a column** | | **Destructive.** The data in it is gone. |
+| **Changes a type** | text → number | **Destructive** if anything does not convert. |
+| **Rewrites data** | splitting a name column | **Destructive.** Depends entirely on the code. |
+
+The bottom three are the ones to stop and back up for. So are any you cannot
+classify at a glance.
+
+> **On SQLite, altering a column rebuilds the whole table** — Django creates a
+> new one, copies every row across, drops the old and renames. Harmless, and
+> invisible at this size, but it is why an "alter" here is not the instant
+> operation it is elsewhere.
+
+### 3. Back up, then migrate
+
+Always for the destructive kinds, and there is no reason not to for the rest:
+
+```bash
+python -c "import sqlite3,sys; s=sqlite3.connect('/home/yourname/mentor-data/mentor.sqlite3'); d=sqlite3.connect(sys.argv[1]); s.backup(d); d.close(); s.close()" ~/backups/before-migrate-$(date +%F-%H%M).sqlite3
+python manage.py migrate
+```
+
+Then `collectstatic` if static files changed, and **Reload**.
+
+### 4. If it goes wrong
+
+Many migrations can simply be undone by migrating back to the previous number:
+
+```bash
+python manage.py migrate orders 0002
+```
+
+Then check out the matching older code and Reload. **This only works for
+migrations Django can reverse** — adding a column, making one optional. A
+migration that dropped a column can be "reversed" structurally, but the data
+that was in it does not come back.
+
+That is what the backup is for. With the app stopped, copy the backup over
+`mentor-data/mentor.sqlite3` and you are back exactly where you started.
+
+### Worked example: making the price optional
+
+The change that added this section, so you can see the shape of it.
+
+`unit_price` on a product became optional, because a product is often added
+mid-order by someone who does not know what it costs.
+
+```
+$ python manage.py migrate --plan
+Planned operations:
+orders.0003_alter_orderitem_unit_price_snapshot_and_more
+    Alter field unit_price_snapshot on orderitem
+    Alter field unit_price on product
+```
+
+Two columns going from `NOT NULL` to `NULL`. Nothing dropped, nothing
+converted, every existing price kept exactly as it was — the safe kind. It was
+also tested in reverse before shipping: `migrate orders 0002` and back again,
+both clean.
+
+Deploying it is the ordinary sequence — pull, migrate, reload — and no
+existing product is affected, because they all already have prices.
 
 ## Backups
 
@@ -240,7 +337,7 @@ do not control.
 
 ```bash
 mkdir -p ~/backups
-python -c "import sqlite3,sys; s=sqlite3.connect('/home/yourname/mentor-data/mentor.sqlite3'); d=sqlite3.connect(sys.argv[1]); s.backup(d); d.close(); s.close()" ~/backups/mentor-$(date +%F).sqlite3
+python -c "import sqlite3,sys; s=sqlite3.connect('/home/kmaris/mentor-data/mentor.sqlite3'); d=sqlite3.connect(sys.argv[1]); s.backup(d); d.close(); s.close()" ~/backups/mentor-$(date +%F).sqlite3
 ```
 
 SQLite's backup API rather than `cp`, because it takes a consistent snapshot

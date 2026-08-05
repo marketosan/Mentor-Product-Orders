@@ -70,7 +70,13 @@ class Product(models.Model):
         help_text="Optional. The seller's own name for this product, for use when ordering.",
     )
     unit = models.CharField(max_length=10, choices=Unit.choices)
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Current price in euros.")
+    # Optional: a product can be added mid-order by someone who does not know
+    # what it costs. Null means "not known", which is deliberately different
+    # from 0.00 -- a zero here would quietly understate every order total.
+    unit_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Current price in euros. Leave empty if not known.",
+    )
     seller = models.ForeignKey(Seller, on_delete=models.PROTECT, related_name="products")
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(
@@ -114,7 +120,11 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="order_items")
     quantity = models.DecimalField(max_digits=10, decimal_places=3)
     urgency = models.CharField(max_length=10, choices=Urgency.choices, default=Urgency.LOW)
-    unit_price_snapshot = models.DecimalField(max_digits=10, decimal_places=2)
+    # Null when the product had no price at the time. Still a snapshot: pricing
+    # the product later must not retroactively price what was already ordered.
+    unit_price_snapshot = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -145,4 +155,12 @@ class OrderItem(models.Model):
 
     @property
     def line_total(self):
+        """What this row costs, at the price frozen when it was requested.
+
+        None when the product had no price. Callers must not treat that as
+        zero: unknown is not free, and summing it as 0 would report a total the
+        shop will not actually be charged.
+        """
+        if self.unit_price_snapshot is None:
+            return None
         return self.quantity * self.unit_price_snapshot

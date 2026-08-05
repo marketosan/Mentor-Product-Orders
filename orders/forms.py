@@ -115,9 +115,17 @@ class ProductForm(forms.ModelForm):
         self.fields["seller"].queryset = Seller.objects.filter(is_active=True)
 
     def clean_unit_price(self):
-        price = self.cleaned_data["unit_price"]
+        """Optional, but not zero.
+
+        Blank means "nobody knows yet", which is a real state when a product is
+        added mid-order. Zero is a claim that it is free, and would quietly
+        understate every total it appears in, so it stays rejected.
+        """
+        price = self.cleaned_data.get("unit_price")
+        if price is None:
+            return None
         if price <= 0:
-            raise forms.ValidationError("Price must be more than zero.")
+            raise forms.ValidationError("Price must be more than zero, or left empty.")
         return price
 
     def clean(self):

@@ -103,10 +103,17 @@
         </div>
 
         <div class="w-1/2">
-          <label for="p-price" class="block text-sm font-medium">Price per unit</label>
+          <label for="p-price" class="block text-sm font-medium">
+            Price per unit <span class="font-normal text-stone-400">(optional)</span>
+          </label>
           <div class="relative mt-1">
             <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-stone-500">&euro;</span>
-            <input type="number" name="unit_price" id="p-price" step="0.01" min="0" required
+            {% comment %}
+              Not required: someone adding a product mid-order often does not
+              know the price. Left empty it stays unknown, which totals treat
+              as missing rather than as zero.
+            {% endcomment %}
+            <input type="number" name="unit_price" id="p-price" step="0.01" min="0"
                    inputmode="decimal" value="{{ form.unit_price.value|default:'' }}"
                    class="w-full rounded-md border border-stone-300 py-3 pl-7 pr-3 text-base focus:border-[#71a07c] focus:outline-none">
           </div>

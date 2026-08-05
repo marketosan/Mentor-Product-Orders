@@ -42,7 +42,7 @@
       <p class="ml-auto text-sm text-stone-500">
         {{ item_count }} item{{ item_count|pluralize }}{% if not selected_seller %} across
         {{ groups|length }} seller{{ groups|length|pluralize }}{% endif %}
-        &middot; <span class="font-medium text-stone-700 tabular-nums">&euro;{{ grand_total|floatformat:2 }}</span>
+        &middot; <span class="font-medium text-stone-700 tabular-nums">&euro;{{ grand_total|floatformat:2 }}</span>{% if unpriced_count %}<span class="text-stone-400" title="Items with no price are not counted"> + {{ unpriced_count }} unpriced</span>{% endif %}
       </p>
     </div>
   {% endif %}
@@ -70,8 +70,13 @@
         <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           {# Lighter weight: the bar itself already separates the sellers, so the name does not also have to shout. #}
           <h2 class="text-lg font-medium tracking-tight">{{ group.seller.name }}</h2>
+          {% comment %}
+            The total covers only the priced rows. When some have no price it
+            says so, because a figure that silently omits items reads as
+            authoritative and is not.
+          {% endcomment %}
           <span class="text-sm font-semibold tabular-nums">
-            &euro;{{ group.total|floatformat:2 }}
+            &euro;{{ group.total|floatformat:2 }}{% if group.unpriced_count %}<span class="font-normal text-stone-100" title="{{ group.unpriced_count }} item{{ group.unpriced_count|pluralize }} with no price {{ group.unpriced_count|pluralize:'is,are' }} not included"> + {{ group.unpriced_count }} unpriced</span>{% endif %}
           </span>
         </div>
 
@@ -236,10 +241,18 @@
                 current one: the line total is quantity times this, so showing
                 the live price would make the arithmetic look wrong.
               {% endcomment %}
+              {% comment %}
+                A missing price shows as "no price", never as 0.00 -- the two
+                mean different things, and a zero would look like a real total.
+              {% endcomment %}
               <div class="mt-0.5 text-xs tabular-nums text-stone-500">
-                &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
-                <span class="text-stone-300" aria-hidden="true">&middot;</span>
-                <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+                {% if item.unit_price_snapshot is None %}
+                  <span class="text-stone-400 italic">no price</span>
+                {% else %}
+                  &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
+                  <span class="text-stone-300" aria-hidden="true">&middot;</span>
+                  <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+                {% endif %}
               </div>
             </div>
 

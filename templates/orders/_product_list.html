@@ -37,7 +37,11 @@
       </div>
 
       <span class="shrink-0 self-center text-sm tabular-nums text-stone-500">
-        &euro;{{ product.unit_price|floatformat:2 }}/{{ product.unit }}
+        {% if product.unit_price is None %}
+          <span class="text-stone-400 italic">no price</span>
+        {% else %}
+          &euro;{{ product.unit_price|floatformat:2 }}/{{ product.unit }}
+        {% endif %}
       </span>
 
       <div class="flex w-full shrink-0 items-center justify-end gap-0.5 sm:w-auto">
@@ -52,6 +56,48 @@
             <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
           </svg>
         </button>
+
+        {% comment %}
+          Two different things, and the row shows whichever applies.
+
+          Never ordered: delete it properly. A typo or a duplicate should not
+          linger in the catalog forever.
+
+          Ordered before: it is history, so it can only be switched off. Rule 3
+          keeps the row, and PROTECT would refuse the delete regardless.
+        {% endcomment %}
+        {% if product.is_active %}
+          <button hx-post="{% url 'toggle_product' product.pk %}"
+                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-list-search"
+                  hx-confirm="Deactivate {{ product.name }}? It stays in past orders but nobody can add it to the list."
+                  aria-label="Deactivate {{ product.name }}" title="Deactivate"
+                  class="rounded-md p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-900">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/>
+            </svg>
+          </button>
+        {% else %}
+          <button hx-post="{% url 'toggle_product' product.pk %}"
+                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-list-search"
+                  class="rounded-md px-3 py-2 text-sm text-[#4a7355] hover:bg-[#eef4f0] hover:text-[#3d6047]">
+            Reactivate
+          </button>
+        {% endif %}
+
+        {% if not product.order_count %}
+          <button hx-post="{% url 'delete_product' product.pk %}"
+                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-list-search"
+                  hx-confirm="Delete {{ product.name }} for good? It has never been ordered, so nothing is lost."
+                  aria-label="Delete {{ product.name }}" title="Delete permanently"
+                  class="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            </svg>
+          </button>
+        {% endif %}
       </div>
     </div>
   {% empty %}

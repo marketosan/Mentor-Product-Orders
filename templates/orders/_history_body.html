@@ -48,7 +48,7 @@
         <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h2 class="font-medium tracking-tight text-stone-900">{{ order.seller.name }}</h2>
           <span class="text-sm font-semibold tabular-nums text-stone-700">
-            &euro;{{ order.total|floatformat:2 }}
+            &euro;{{ order.total|floatformat:2 }}{% if order.unpriced_count %}<span class="font-normal text-stone-400" title="{{ order.unpriced_count }} item{{ order.unpriced_count|pluralize }} had no price"> + {{ order.unpriced_count }} unpriced</span>{% endif %}
           </span>
         </div>
         <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500">
@@ -103,11 +103,18 @@
                 The price frozen at request time, which is what the line total
                 is built from -- rule 2's whole point, and the reason history
                 stays true after a catalog price change.
+
+                A missing price shows as "no price", never as 0.00 -- the two
+                mean different things, and a zero would look like a real total.
               {% endcomment %}
               <div class="mt-0.5 text-xs tabular-nums text-stone-500">
-                &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
-                <span class="text-stone-300" aria-hidden="true">&middot;</span>
-                <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+                {% if item.unit_price_snapshot is None %}
+                  <span class="text-stone-400 italic">no price</span>
+                {% else %}
+                  &euro;{{ item.unit_price_snapshot|floatformat:2 }}/{{ item.product.unit }}
+                  <span class="text-stone-300" aria-hidden="true">&middot;</span>
+                  <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
+                {% endif %}
               </div>
             </div>
           </div>

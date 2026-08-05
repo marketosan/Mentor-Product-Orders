@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from decimal import Decimal
 from itertools import groupby
 from urllib.parse import quote
 
@@ -180,6 +181,25 @@ def _viber_forward_url(message):
     return f"viber://forward?text={quote(message, safe='')}"
 
 
+def _sum_line_totals(items):
+    """Total the rows that have a price, and count the ones that do not.
+
+    Returns (total, unpriced_count). Unpriced rows are excluded rather than
+    counted as zero, and the count travels alongside so the screen can say the
+    figure is incomplete. A total that silently omits items is worse than no
+    total, because it looks authoritative.
+    """
+    total = Decimal("0")
+    unpriced = 0
+    for item in items:
+        line = item.line_total
+        if line is None:
+            unpriced += 1
+        else:
+            total += line
+    return total, unpriced
+
+
 def _open_items_by_seller():
     """Open items bundled into one group per seller, each with its own total.
 
@@ -208,10 +228,12 @@ def _open_items_by_seller():
     for seller, seller_items in groupby(items, key=lambda item: item.product.seller):
         seller_items = list(seller_items)
         message = _order_message(seller_items)
+        total, unpriced = _sum_line_totals(seller_items)
         groups.append({
             "seller": seller,
             "items": seller_items,
-            "total": sum(item.line_total for item in seller_items),
+            "total": total,
+            "unpriced_count": unpriced,
             "urgent_count": sum(1 for item in seller_items if item.urgency == OrderItem.Urgency.HIGH),
             "message": message,
             "viber_forward_url": _viber_forward_url(message),
@@ -243,6 +265,7 @@ def _dashboard_context(request, *, edit_form=None, editing_id=None):
         "selected_seller": selected_seller,
         "item_count": sum(len(group["items"]) for group in groups),
         "grand_total": sum(group["total"] for group in groups),
+        "unpriced_count": sum(group["unpriced_count"] for group in groups),
         "edit_form": edit_form,
         "editing_id": editing_id,
     }
@@ -556,6 +579,7 @@ def _history_context(request):
     orders = []
     for completed_at, batch in groupby(rows, key=lambda item: item.completed_at):
         batch = list(batch)
+        batch_total, batch_unpriced = _sum_line_totals(batch)
         orders.append({
             "completed_at": completed_at,
             "completed_by": batch[0].completed_by,
@@ -563,7 +587,8 @@ def _history_context(request):
             # seller -- individually or as that seller's whole list.
             "seller": batch[0].product.seller,
             "items": batch,
-            "total": sum(item.line_total for item in batch),
+            "total": batch_total,
+            "unpriced_count": batch_unpriced,
         })
 
     return {
@@ -598,7 +623,11 @@ def _product_list_context(request):
     """
     query = (request.POST.get("q") or request.GET.get("q") or "").strip()
     products = Product.objects.select_related("seller").annotate(
-        open_count=Count("order_items", filter=Q(order_items__completed_at__isnull=True))
+        open_count=Count("order_items", filter=Q(order_items__completed_at__isnull=True)),
+        # Whether the row can be deleted outright. A product that has ever been
+        # ordered is part of history and only gets deactivated -- PROTECT on
+        # OrderItem.product would refuse the delete anyway.
+        order_count=Count("order_items"),
     )
     if query:
         products = products.filter(
@@ -662,6 +691,57 @@ def edit_product(request, pk):
             "sellers": Seller.objects.filter(is_active=True),
         },
         status=status,
+    )
+
+
+@shop_admin_required
+@require_POST
+def toggle_product(request, pk):
+    """Take a product out of circulation, or bring it back.
+
+    Deactivating is the answer for anything that has ever been ordered: rule 3
+    keeps those rows because history points at them. An inactive product drops
+    out of the quick-add search and cannot be added to the list, but stays
+    visible here and in the orders it already appears in.
+    """
+    product = get_object_or_404(Product, pk=pk)
+    product.is_active = not product.is_active
+    product.save(update_fields=["is_active"])
+
+    verb = "reactivated" if product.is_active else "deactivated"
+    return _toast(
+        render(request, PRODUCT_LIST, _product_list_context(request)),
+        f"{product.name} {verb}",
+    )
+
+
+@shop_admin_required
+@require_POST
+def delete_product(request, pk):
+    """Remove a product outright -- only one that has never been ordered.
+
+    That case is real and worth supporting: a typo, a duplicate, something
+    added to the catalog by mistake. Deactivating those would leave clutter in
+    the list forever for no reason.
+
+    Anything with order items is refused rather than deleted. It is history,
+    rule 3 says keep it, and PROTECT on OrderItem.product would raise anyway --
+    catching it here means an explanation instead of a 500.
+    """
+    product = get_object_or_404(Product, pk=pk)
+
+    if product.order_items.exists():
+        return _toast(
+            render(request, PRODUCT_LIST, _product_list_context(request)),
+            f"{product.name} has been ordered before, so it cannot be deleted. "
+            f"Deactivate it instead.",
+        )
+
+    name = product.name
+    product.delete()
+    return _toast(
+        render(request, PRODUCT_LIST, _product_list_context(request)),
+        f"{name} deleted",
     )
 
 

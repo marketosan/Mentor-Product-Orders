@@ -12,7 +12,7 @@
               onclick="selectProduct({{ product.pk }}, '{{ product.name|escapejs }}', '{{ product.unit|escapejs }}')">
         <span class="font-medium">{{ product.name }}</span>
         <span class="text-sm text-stone-500">
-          &middot; {{ product.seller.name }} &middot; &euro;{{ product.unit_price|floatformat:2 }}/{{ product.unit }}
+          &middot; {{ product.seller.name }}{% if product.unit_price is not None %} &middot; &euro;{{ product.unit_price|floatformat:2 }}/{{ product.unit }}{% endif %}
         </span>
       </button>
     {% empty %}

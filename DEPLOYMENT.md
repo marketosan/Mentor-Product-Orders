@@ -356,7 +356,12 @@ Then restart the Waitress window (or `nssm restart Mentor`). Apache does not
 need restarting unless the vhost changed.
 
 **Back up `db.sqlite3` first if the change brings migrations.** A `git pull` can
-be undone; a migration often cannot. Check with:
+be undone; a migration often cannot. `DEPLOYMENT_PYTHONANYWHERE.md` has the full
+treatment under "When a change touches the database" — how to tell what a
+migration will do before running it, which kinds are destructive, and how to get
+back. It is host-independent; only the paths differ.
+
+Check with:
 
 ```bat
 .venv\Scripts\python manage.py migrate --plan

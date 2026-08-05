@@ -279,6 +279,11 @@ or click **Restart** on the Setup Python App page.
 
 ### Back up first if there is a migration
 
+> The full treatment — telling what a migration will do before running it,
+> which kinds are destructive, how to get back — is in
+> `DEPLOYMENT_PYTHONANYWHERE.md` under "When a change touches the database".
+> It is host-independent; only the paths differ.
+
 `git pull` is reversible. A migration is not, in general — some rewrite or drop
 data, and Django cannot always undo them. Before running `migrate` on a change
 you have not deployed before:
