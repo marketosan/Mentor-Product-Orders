@@ -8,12 +8,17 @@ Full spec: [`specs/mentor-app-spec.md`](specs/mentor-app-spec.md)
 
 Django 6 · HTMX · Tailwind (CDN) · SQLite
 
-Deploying is a different job, and there are two guides depending on where:
+Deploying is a different job, and there is a guide per destination:
 
-- [`DEPLOYMENT_CPANEL.md`](DEPLOYMENT_CPANEL.md) — on cPanel hosting, reachable
-  from anywhere. Passenger runs the app, AutoSSL gives it HTTPS.
-- [`DEPLOYMENT.md`](DEPLOYMENT.md) — on a machine in the shop, over the local
-  network, with XAMPP's Apache in front.
+- [`DEPLOYMENT_PYTHONANYWHERE.md`](DEPLOYMENT_PYTHONANYWHERE.md) — free, public,
+  HTTPS included. **The one in use.**
+- [`DEPLOYMENT_CPANEL.md`](DEPLOYMENT_CPANEL.md) — cPanel hosting, via Passenger.
+  Needs a host that offers "Setup Python App"; Hostinger's shared plans do not.
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — a machine in the shop, on the local network,
+  with XAMPP's Apache in front.
+
+All three run the same code and the same SQLite database. What differs is who
+starts the process and who terminates HTTPS.
 
 ## First time on a new machine
 

@@ -66,11 +66,21 @@ variables override the file. Full deployment steps: `DEPLOYMENT.md`.
   alias. The middleware must stay directly after `SecurityMiddleware`. Storage
   is left at Django's default on purpose — a manifest storage would need
   `collectstatic` to have run before the tests could resolve `{% static %}`.
-- **Two deployment targets, two guides.** `DEPLOYMENT_CPANEL.md` (public, on
-  cPanel; Passenger imports `passenger_wsgi.py`, AutoSSL provides HTTPS) and
-  `DEPLOYMENT.md` (the shop's own machine on the LAN; Apache proxies to
-  `serve.py`, which runs Waitress because gunicorn does not run on Windows).
-  Django never runs *inside* Apache — `mod_wsgi` is compiled and version-tied.
+- **Three deployment guides, one of them live.**
+  `DEPLOYMENT_PYTHONANYWHERE.md` is the real target: free tier, public HTTPS,
+  persistent disk so SQLite is untouched. `DEPLOYMENT_CPANEL.md` (Passenger
+  imports `passenger_wsgi.py`) and `DEPLOYMENT.md` (the shop LAN; Apache proxies
+  to `serve.py`, which runs Waitress because gunicorn has no Windows support)
+  are kept for the alternatives. Django never runs *inside* Apache —
+  `mod_wsgi` is compiled and version-tied.
+  - The shop has **no machine to host this on**, and Hostinger's shared plans
+    (hPanel, Premium / Cloud Startup) are PHP-only with no Python runtime, so
+    the LAN and cPanel paths both turned out to be dead ends. Established
+    2026-08-05.
+  - **Django 6 needs Python 3.12+**, which is the gate on any host. Verified
+    fallbacks if a host is older: Django 5.2 LTS covers 3.10–3.13, Django 4.2
+    LTS covers 3.8–3.12. Moving back is not a version bump — every feature was
+    built against 6, so the suite has to be run against the older release.
 - On cPanel the code lives outside `public_html` and `DB_NAME` points outside
   the app directory. Both matter: anything under `public_html` is downloadable,
   including `db.sqlite3`, and a database inside the repo is one `git pull` away
