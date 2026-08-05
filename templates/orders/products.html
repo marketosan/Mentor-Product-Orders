@@ -3,9 +3,26 @@
 {% block title %}Products &middot; Mentor{% endblock %}
 
 {% block content %}
-<h1 class="text-2xl font-semibold tracking-tight">Products</h1>
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+  <h1 class="text-2xl font-semibold tracking-tight">Products</h1>
+
+  {% comment %}
+    hx-include picks up the search box, so whatever was being searched for
+    prefills the name -- searching for something missing and then adding it is
+    the usual way to arrive here.
+  {% endcomment %}
+  <button type="button"
+          hx-get="{% url 'new_product' %}?origin=products"
+          hx-include="#product-list-search"
+          hx-target="#modal-body"
+          hx-swap="innerHTML"
+          hx-on::after-request="document.getElementById('modal').showModal()"
+          class="rounded-md bg-[#4a7355] px-4 py-2.5 text-base text-white hover:bg-[#3d6047]">
+    Add product
+  </button>
+</div>
 <p class="mt-1 text-sm text-stone-500">
-  New products are added while ordering, from the order list.
+  Products can also be added while ordering, from the order list.
 </p>
 
 <div class="mt-4">

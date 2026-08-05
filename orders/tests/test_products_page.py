@@ -1,5 +1,6 @@
 """The catalog page: searching it, and editing from it."""
 
+import json
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -183,6 +184,106 @@ class ProductsPageRenderingTests(ProductsPageTestCase):
 
         for marker in ("{#", "#}", "{%", "%}"):
             self.assertNotIn(marker, markup)
+
+
+class AddFromProductsPageTests(ProductsPageTestCase):
+    """Creating a product here, rather than mid-order from the order list.
+
+    Same form, different landing: there is no quick-add form on this page to
+    hand the new product back to, so success just refreshes the list.
+    """
+
+    def create(self, **overrides):
+        data = {
+            "name": "Cinnamon syrup", "order_name": "", "seller": self.dairy.pk,
+            "unit": "l", "unit_price": "6.50", "origin": "products",
+        }
+        data.update(overrides)
+        return self.client.post(reverse("new_product"), data)
+
+    def test_the_page_offers_an_add_button(self):
+        response = self.client.get(reverse("products"))
+
+        self.assertContains(response, f"{reverse('new_product')}?origin=products")
+        self.assertContains(response, "Add product")
+
+    def test_it_creates_the_product_and_credits_the_author(self):
+        self.create()
+
+        product = Product.objects.get(name="Cinnamon syrup")
+        self.assertEqual(product.created_by, self.admin)
+        self.assertEqual(product.seller, self.dairy)
+
+    def test_success_refreshes_the_product_list_not_the_order_panel(self):
+        """The order list's success path calls selectProduct(), which only
+        exists on that page -- running it here would throw.
+        """
+        response = self.create()
+
+        self.assertTemplateUsed(response, "orders/_product_list.html")
+        self.assertEqual(response.headers["HX-Retarget"], "#product-list")
+        self.assertNotContains(response, "selectProduct(")
+
+    def test_success_shuts_the_dialog_and_confirms(self):
+        response = self.create()
+
+        fired = json.loads(response.headers["HX-Trigger"])
+        self.assertTrue(fired["closeModal"])
+        self.assertIn("Cinnamon syrup added to the catalog", fired["toast"]["message"])
+
+    def test_adding_from_the_order_list_still_returns_to_the_quick_add_form(self):
+        """The other origin must keep working -- that flow interrupts an order
+        being typed and has to resume it.
+        """
+        response = self.client.post(reverse("new_product"), {
+            "name": "Cardamom", "order_name": "", "seller": self.dairy.pk,
+            "unit": "kg", "unit_price": "9.00",
+        })
+
+        self.assertContains(response, "selectProduct(")
+        self.assertNotIn("HX-Retarget", response.headers)
+
+    def test_a_price_is_not_required(self):
+        self.create(unit_price="")
+
+        self.assertIsNone(Product.objects.get(name="Cinnamon syrup").unit_price)
+
+    def test_the_search_prefills_the_name(self):
+        """Searching for something missing and then adding it is how you get
+        here.
+        """
+        response = self.client.get(reverse("new_product"), {"origin": "products", "q": "Cardamom"})
+
+        self.assertEqual(response.context["form"].initial["name"], "Cardamom")
+
+    def test_the_search_survives_the_add(self):
+        response = self.create(name="Oat milk", q="milk")
+
+        self.assertEqual(
+            sorted(p.name for p in response.context["products"]),
+            ["Oat milk", "Whole milk"],
+        )
+
+    def test_a_rejected_add_keeps_the_products_origin(self):
+        response = self.create(unit_price="0")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertContains(response, 'value="products"', status_code=422)
+        self.assertFalse(Product.objects.filter(name="Cinnamon syrup").exists())
+
+    def test_a_duplicate_name_is_still_caught(self):
+        response = self.create(name="whole milk")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(Product.objects.filter(name__iexact="whole milk").count(), 1)
+
+    def test_an_employee_cannot_reach_the_products_page_to_add_from_it(self):
+        """The page is admin-only, though new_product itself stays open to
+        employees -- they add products mid-order from the order list.
+        """
+        self.client.force_login(self.maria)
+
+        self.assertEqual(self.client.get(reverse("products")).status_code, 403)
 
 
 class EditFromProductsPageTests(ProductsPageTestCase):

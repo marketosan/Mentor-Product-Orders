@@ -26,24 +26,32 @@
 {% if user.is_authenticated %}
 <header class="border-b-2 border-[#71a07c] bg-white">
   {% comment %}
-    Wordmark, nav and account on one line. The account block takes ml-auto so
-    it hugs the right edge whatever the nav's width, and the whole row wraps
-    rather than crushing itself on a narrow screen.
+    Equal flexible columns either side of an auto-width middle put the nav in
+    the centre of the screen, not merely in the middle of whatever space the
+    wordmark and account details leave over -- so it stays put as the username
+    changes length or an admin gains a link.
 
-    Dashboard and Sellers are admin-only, so an employee sees a single link --
+    On a phone that is three things across a narrow screen, so the nav drops to
+    its own centred row below and the grid becomes two columns. From `sm` up it
+    is one row of three.
+
+    Dashboard and the rest are admin-only, so an employee sees a single link --
     correct, if sparse. resolver_match.url_name marks the current page, which
     also carries aria-current for screen readers.
   {% endcomment %}
-  <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 sm:px-6">
+  <div class="grid grid-cols-2 items-center gap-x-4 gap-y-2 px-4 py-3
+              sm:grid-cols-[1fr_auto_1fr] sm:px-6">
     {% comment %}
       #71a07c measures 2.99:1 on white, below the 3:1 floor even for large
       text, so the wordmark takes a darker sibling of the same hue at 5.42:1.
     {% endcomment %}
-    <a href="{% url 'order_list' %}" class="text-xl font-bold tracking-tight text-[#4a7355]">Mentor</a>
+    <a href="{% url 'order_list' %}"
+       class="col-start-1 row-start-1 text-xl font-bold tracking-tight text-[#4a7355]">Mentor</a>
 
     {% with current=request.resolver_match.url_name %}
-      {# Negative margin so the first pill's padding lines up with the wordmark. #}
-      <nav aria-label="Main" class="-mx-1 flex items-center gap-1 overflow-x-auto">
+      <nav aria-label="Main"
+           class="col-span-2 row-start-2 flex max-w-full items-center gap-1 justify-self-center overflow-x-auto
+                  sm:col-span-1 sm:col-start-2 sm:row-start-1">
         {% for name, label, admin_only in nav_links %}
           {% if not admin_only or user.is_shop_admin %}
             <a href="{% url name %}"
@@ -61,7 +69,8 @@
       </nav>
     {% endwith %}
 
-    <div class="ml-auto flex min-w-0 items-center gap-3 text-sm">
+    <div class="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-3 text-sm
+                sm:col-start-3">
       {# Just the username: the Dashboard and Sellers pills already only appear for admins. #}
       <span class="truncate text-stone-500">{{ user.username }}</span>
       <form method="post" action="{% url 'logout' %}">

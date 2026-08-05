@@ -149,11 +149,14 @@ by adding a tuple, not by editing markup.
 | Products | `/products/` | admins |
 | Users | `/users/` | admins |
 
-Wordmark, nav pills and account details share one row; the account block takes
-`ml-auto` so it hugs the right edge whatever the nav's width, and the row wraps
-rather than crushing on a narrow screen. The current page is a filled pill and
-carries `aria-current="page"`, off `request.resolver_match.url_name`. An
-employee sees a one-link nav, which is correct if sparse.
+The nav sits **centred on the screen**, done with equal `1fr` columns either
+side of an auto-width middle — not `mx-auto`, which would only centre it in the
+space the wordmark and account happen to leave, so it would drift as a username
+changes length or an admin gains a link. On a phone the nav drops to its own
+centred row and the grid becomes two columns; from `sm` up it is one row of
+three. The current page is a filled pill carrying `aria-current="page"`, off
+`request.resolver_match.url_name`. An employee sees a one-link nav, which is
+correct if sparse.
 
 `/sellers/` is full CRUD: substring search over name/phone/email, add and edit
 through the shared `<dialog id="modal">`, and deactivate/reactivate. **Delete

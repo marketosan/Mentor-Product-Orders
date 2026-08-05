@@ -496,18 +496,32 @@ def product_search(request):
 
 @login_required
 def new_product(request):
-    """Add a missing product without losing the order being typed.
+    """Add a product to the catalog, from the order list or the products page.
 
-    Rendered into a dialog. On success the reply is a script that closes the
-    dialog and drops the new product straight into the quick-add form, so the
-    interrupted flow picks up where it left off.
+    From the order list this interrupts an order being typed, so success hands
+    the new product straight back to the quick-add form and the interrupted
+    flow carries on. From the products page there is no order in progress, so
+    success just refreshes the list.
+
+    `origin` says which, the same way `edit_product` uses it -- the form posts
+    from inside the dialog and always targets #modal-body, which does not say
+    what opened it.
     """
+    origin = request.POST.get("origin") or request.GET.get("origin") or ""
+    query = (request.POST.get("q") or request.GET.get("q") or "").strip()
+
     if request.method == "POST":
         form = ProductForm(request.POST)
         if form.is_valid():
             product = form.save(commit=False)
             product.created_by = request.user
             product.save()
+
+            if origin == "products":
+                return _saved_product(
+                    request, product, origin, f"{product.name} added to the catalog"
+                )
+            # Back to the quick-add form, which only exists on the order list.
             return _toast(
                 render(request, "orders/_product_created.html", {"product": product}),
                 f"{product.name} added to the catalog",
@@ -515,13 +529,19 @@ def new_product(request):
         status = 422
     else:
         # Whatever was typed into the search box is almost certainly the name.
-        form = ProductForm(initial={"name": request.GET.get("q", "").strip()})
+        form = ProductForm(initial={"name": query})
         status = 200
 
     return render(
         request,
         PRODUCT_FORM,
-        {"form": form, "title": "New product", "sellers": Seller.objects.filter(is_active=True)},
+        {
+            "form": form,
+            "origin": origin,
+            "query": query,
+            "title": "New product",
+            "sellers": Seller.objects.filter(is_active=True),
+        },
         status=status,
     )
 
@@ -745,7 +765,7 @@ def delete_product(request, pk):
     )
 
 
-def _saved_product(request, product, origin):
+def _saved_product(request, product, origin, message=None):
     """Shut the dialog and refresh whichever list is behind it."""
     if origin == "dashboard":
         response = render(request, DASHBOARD_BODY, _dashboard_context(request))
@@ -758,4 +778,8 @@ def _saved_product(request, product, origin):
         response["HX-Retarget"] = "#panel"
 
     response["HX-Reswap"] = "outerHTML"
-    return _trigger(response, toast={"message": f"{product.name} updated"}, closeModal=True)
+    return _trigger(
+        response,
+        toast={"message": message or f"{product.name} updated"},
+        closeModal=True,
+    )

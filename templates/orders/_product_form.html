@@ -13,10 +13,13 @@
       hx-swap="innerHTML"
       class="rounded-2xl bg-white p-5 shadow-xl">
   {% csrf_token %}
-  {% if product %}
-    <input type="hidden" name="origin" value="{{ origin }}">
-    <input type="hidden" name="q" value="{{ query }}">
-  {% endif %}
+  {% comment %}
+    Carried on both add and edit: the form posts from inside the dialog, so it
+    always targets #modal-body and the reply cannot tell which page opened it.
+    `q` rides along so saving from the products page keeps the current search.
+  {% endcomment %}
+  <input type="hidden" name="origin" value="{{ origin }}">
+  <input type="hidden" name="q" value="{{ query }}">
 
   <h2 class="text-lg font-semibold tracking-tight">{{ title }}</h2>
   {% if product %}
