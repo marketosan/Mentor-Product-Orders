@@ -73,36 +73,23 @@
 
       <div class="divide-y divide-stone-200">
         {% for item in order.items %}
-          <div class="flex flex-wrap items-start gap-x-3 gap-y-1 px-4 py-3">
-            <div class="min-w-0 flex-1">
-              <span class="font-medium leading-snug text-stone-900">{{ item.product.name }}</span>
+          <div class="flex flex-wrap items-start gap-x-3 gap-y-2 px-4 py-3">
+            {% comment %}
+              basis-40 stops the name collapsing. flex-1 with min-w-0 alone lets
+              it shrink to nothing when the row is tight, which on a phone left
+              the product unreadable while the numbers kept their width.
+            {% endcomment %}
+            <div class="min-w-0 flex-1 basis-40">
+              <div class="font-medium leading-snug text-stone-900">{{ item.product.name }}</div>
               {% if item.product.order_name %}
-                <span class="text-sm text-stone-500">&middot; {{ item.product.order_name }}</span>
+                <div class="text-sm leading-snug text-stone-500">
+                  ordered as {{ item.product.order_name }}
+                </div>
               {% endif %}
               <div class="mt-0.5 text-sm leading-snug text-stone-400">
                 requested by {{ item.requested_by.username }}, {{ item.created_at|date:"j M H:i" }}
               </div>
             </div>
-
-            {% comment %}
-              Rule 4's undo. Spelled out rather than left as an icon: an arrow
-              alone does not say whether it reverses the order or the page.
-
-              The filters and page ride in the query string so the screen does
-              not jump back to page 1 mid-correction.
-            {% endcomment %}
-            <button hx-post="{% url 'uncomplete_item' item.pk %}?period={{ period }}&amp;size={{ page_size }}&amp;page={{ page.number }}"
-                    hx-target="#history-body" hx-swap="outerHTML"
-                    hx-confirm="Mark {{ item.product.name }} as not ordered? It goes back on the order list."
-                    aria-label="Mark {{ item.product.name }} as not ordered"
-                    title="Mark as not ordered"
-                    class="order-last inline-flex shrink-0 items-center gap-1.5 rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900 sm:order-none">
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                   stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
-              </svg>
-              Mark as not ordered
-            </button>
 
             <div class="shrink-0 text-right">
               <div class="leading-tight font-medium tabular-nums text-stone-900">
@@ -125,6 +112,30 @@
                   <span class="font-medium text-stone-700">&euro;{{ item.line_total|floatformat:2 }}</span>
                 {% endif %}
               </div>
+            </div>
+
+            {% comment %}
+              Rule 4's undo, spelled out rather than left as an icon: an arrow
+              alone does not say whether it reverses the order or the page.
+
+              Its own full-width line on a phone, like every other list's row
+              actions -- inline it competed with the product name for space and
+              the name lost. The filters and page ride in the query string so
+              the screen does not jump back to page 1 mid-correction.
+            {% endcomment %}
+            <div class="flex w-full justify-end sm:w-auto">
+              <button hx-post="{% url 'uncomplete_item' item.pk %}?period={{ period }}&amp;size={{ page_size }}&amp;page={{ page.number }}"
+                      hx-target="#history-body" hx-swap="outerHTML"
+                      hx-confirm="Mark {{ item.product.name }} as not ordered? It goes back on the order list."
+                      aria-label="Mark {{ item.product.name }} as not ordered"
+                      title="Mark as not ordered"
+                      class="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border border-stone-300 px-3 text-sm text-stone-600 hover:bg-stone-50 hover:text-stone-900">
+                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
+                </svg>
+                Mark as not ordered
+              </button>
             </div>
           </div>
         {% endfor %}
