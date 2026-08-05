@@ -271,7 +271,7 @@
               <button hx-post="{% url 'complete_item' item.pk %}"
                       hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
                       aria-label="Mark {{ item.product.name }} as ordered" title="Mark as ordered"
-                      class="rounded-md p-2 text-stone-400 hover:bg-[#eef4f0] hover:text-[#3d6047]">
+                      class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-[#eef4f0] hover:text-[#3d6047]">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M20 6 9 17l-5-5"/>
@@ -281,7 +281,7 @@
               <button hx-get="{% url 'dashboard' %}?editing={{ item.pk }}"
                       hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
                       aria-label="Edit {{ item.product.name }}" title="Edit"
-                      class="rounded-md p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-900">
+                      class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-900">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
@@ -292,7 +292,7 @@
                       hx-target="#dashboard-body" hx-swap="outerHTML" hx-include="#seller-filter"
                       hx-confirm="Remove {{ item.product.name }} from the list?"
                       aria-label="Delete {{ item.product.name }}" title="Delete"
-                      class="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600">
+                      class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-red-50 hover:text-red-600">
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>

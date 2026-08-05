@@ -17,17 +17,17 @@
     <div>
       <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium">Username</label>
       <input type="text" name="username" id="{{ form.username.id_for_label }}" autofocus required
-             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 focus:border-[#71a07c] focus:outline-none">
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
     </div>
 
     <div>
       <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium">Password</label>
       <input type="password" name="password" id="{{ form.password.id_for_label }}" required
-             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 focus:border-[#71a07c] focus:outline-none">
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
     </div>
 
     <button type="submit"
-            class="w-full rounded-md bg-[#4a7355] px-4 py-2 text-white hover:bg-[#3d6047]">
+            class="min-h-11 w-full rounded-md bg-[#4a7355] px-4 text-base text-white hover:bg-[#3d6047]">
       Log in
     </button>
   </form>

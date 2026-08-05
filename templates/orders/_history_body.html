@@ -44,20 +44,29 @@
 
   {% for order in orders %}
     <section class="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white">
-      <header class="border-b border-stone-200 bg-stone-50 px-4 py-3">
+      {% comment %}
+        The same green bar as the dashboard's seller blocks, deliberately: a
+        supplier's name should look the same wherever it appears, and the two
+        pages are read one after the other.
+
+        #4a7355 is the lightest of the three greens that can carry white text
+        (5.42:1). Secondary text is stone-100 rather than stone-200, which
+        falls to 4.32:1 here -- under the floor for text this size.
+      {% endcomment %}
+      <header class="bg-[#4a7355] px-4 py-3 text-white">
         <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h2 class="font-medium tracking-tight text-stone-900">{{ order.seller.name }}</h2>
-          <span class="text-sm font-semibold tabular-nums text-stone-700">
-            &euro;{{ order.total|floatformat:2 }}{% if order.unpriced_count %}<span class="font-normal text-stone-400" title="{{ order.unpriced_count }} item{{ order.unpriced_count|pluralize }} had no price"> + {{ order.unpriced_count }} unpriced</span>{% endif %}
+          <h2 class="text-lg font-medium tracking-tight">{{ order.seller.name }}</h2>
+          <span class="text-sm font-semibold tabular-nums">
+            &euro;{{ order.total|floatformat:2 }}{% if order.unpriced_count %}<span class="font-normal text-stone-100" title="{{ order.unpriced_count }} item{{ order.unpriced_count|pluralize }} had no price"> + {{ order.unpriced_count }} unpriced</span>{% endif %}
           </span>
         </div>
-        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-500">
+        <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-stone-100">
           <span>{{ order.completed_at|date:"j M Y, H:i" }}</span>
           {% if order.completed_by %}
-            <span class="text-stone-300" aria-hidden="true">&bull;</span>
+            <span class="text-white/50" aria-hidden="true">&bull;</span>
             <span>marked by {{ order.completed_by.username }}</span>
           {% endif %}
-          <span class="text-stone-300" aria-hidden="true">&bull;</span>
+          <span class="text-white/50" aria-hidden="true">&bull;</span>
           <span>{{ order.items|length }} item{{ order.items|length|pluralize }}</span>
         </div>
       </header>

@@ -55,7 +55,7 @@
                 hx-target="#modal-body" hx-swap="innerHTML"
                 hx-on::after-request="document.getElementById('modal').showModal()"
                 aria-label="Edit {{ seller.name }}" title="Edit"
-                class="rounded-md p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-900">
+                class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-900">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
@@ -72,7 +72,7 @@
                   hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-search"
                   hx-confirm="Deactivate {{ seller.name }}? They stay in past orders but disappear from product search."
                   aria-label="Deactivate {{ seller.name }}" title="Deactivate"
-                  class="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600">
+                  class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-red-50 hover:text-red-600">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
@@ -82,7 +82,7 @@
         {% else %}
           <button hx-post="{% url 'toggle_seller' seller.pk %}"
                   hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-search"
-                  class="rounded-md px-3 py-2 text-sm text-[#4a7355] hover:bg-[#eef4f0] hover:text-[#3d6047]">
+                  class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-[#4a7355] hover:bg-[#eef4f0] hover:text-[#3d6047]">
             Reactivate
           </button>
         {% endif %}

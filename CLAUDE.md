@@ -89,8 +89,20 @@ variables override the file. Full deployment steps: `DEPLOYMENT.md`.
 ## Design constraints
 
 **The app is used mostly on phones.** This is the most load-bearing constraint
-on any UI work: large tap targets, 16px inputs so iOS does not zoom on focus,
-layouts that survive a narrow screen.
+on any UI work. Three rules, applied throughout — match them in anything new:
+
+- **Every interactive target is at least 44px.** Icon buttons are
+  `inline-flex min-h-11 min-w-11 items-center justify-center`, which grows the
+  hit area without inflating the icon. Text buttons and checkbox labels take
+  `min-h-11`. `p-2` around a `h-5 w-5` icon gives 36px and is too small.
+- **Every input, select and textarea carries `text-base`.** Below 16px, iOS
+  zooms the page on focus and does not zoom back. Tailwind's preflight makes
+  form elements inherit the body size, so this usually happens by accident —
+  but only usually, which is why it is explicit.
+- **Row actions take their own full-width line on a phone**
+  (`w-full … justify-end sm:w-auto`) inside a `flex-wrap` row. Three targets
+  beside the content squeezes the name column to nothing at 360px. Every list
+  does this: order panel, dashboard, products, sellers, users.
 
 **Colour.** The shop's colour is `#71a07c`. It measures 2.99:1 on white —
 below the 3:1 floor even for large text — so it is **decorative only**: never
