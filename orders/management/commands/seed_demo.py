@@ -6,7 +6,7 @@ Safe to run repeatedly: everything is created with get_or_create.
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -17,13 +17,14 @@ SELLERS = [
 ]
 
 PRODUCTS = [
-    # (name, seller, unit, price)
-    ("Espresso beans - house blend", "Bertoli Coffee Roasters", "kg", "18.50"),
-    ("Decaf beans", "Bertoli Coffee Roasters", "kg", "21.00"),
-    ("Whole milk", "Green Valley Dairy", "l", "1.15"),
-    ("Oat milk", "Green Valley Dairy", "l", "2.40"),
-    ("Paper cups 8oz", "Metro Wholesale", "pack", "12.00"),
-    ("Napkins", "Metro Wholesale", "box", "8.75"),
+    # (name, seller, unit name, price) -- unit names match Unit rows seeded by
+    # the 0004_unit migration, so this assumes migrate has already run.
+    ("Espresso beans - house blend", "Bertoli Coffee Roasters", "κιλό", "18.50"),
+    ("Decaf beans", "Bertoli Coffee Roasters", "κιλό", "21.00"),
+    ("Whole milk", "Green Valley Dairy", "συσκευασία", "1.15"),
+    ("Oat milk", "Green Valley Dairy", "συσκευασία", "2.40"),
+    ("Paper cups 8oz", "Metro Wholesale", "πακέτο", "12.00"),
+    ("Napkins", "Metro Wholesale", "κούτα", "8.75"),
 ]
 
 ORDER_ITEMS = [
@@ -63,11 +64,15 @@ class Command(BaseCommand):
             )
 
         products = {}
-        for name, seller_name, unit, price in PRODUCTS:
+        for name, seller_name, unit_name, price in PRODUCTS:
             products[name], _ = Product.objects.get_or_create(
                 name=name,
                 seller=sellers[seller_name],
-                defaults={"unit": unit, "unit_price": price, "created_by": admin},
+                defaults={
+                    "unit": Unit.objects.get(name=unit_name),
+                    "unit_price": price,
+                    "created_by": admin,
+                },
             )
 
         for product_name, quantity, urgency in ORDER_ITEMS:

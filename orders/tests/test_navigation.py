@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from orders.models import Product, Seller
+from orders.models import Product, Seller, Unit
 
 User = get_user_model()
 
@@ -95,8 +95,9 @@ class SellersPageTests(NavigationTestCase):
 
     def test_it_lists_sellers_with_their_product_counts(self):
         dairy = Seller.objects.create(name="Green Valley Dairy")
-        Product.objects.create(name="Whole milk", seller=dairy, unit="l", unit_price="1.15")
-        Product.objects.create(name="Oat milk", seller=dairy, unit="l", unit_price="2.40")
+        litre = Unit.objects.create(name="l", plural="l")
+        Product.objects.create(name="Whole milk", seller=dairy, unit=litre, unit_price="1.15")
+        Product.objects.create(name="Oat milk", seller=dairy, unit=litre, unit_price="2.40")
 
         response = self.client.get(reverse("sellers"))
 
@@ -105,7 +106,8 @@ class SellersPageTests(NavigationTestCase):
 
     def test_a_seller_with_one_product_is_not_pluralised(self):
         metro = Seller.objects.create(name="Metro Wholesale")
-        Product.objects.create(name="Napkins", seller=metro, unit="box", unit_price="8.75")
+        box = Unit.objects.create(name="box", plural="boxes")
+        Product.objects.create(name="Napkins", seller=metro, unit=box, unit_price="8.75")
 
         response = self.client.get(reverse("sellers"))
 

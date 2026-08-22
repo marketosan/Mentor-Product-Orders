@@ -97,10 +97,11 @@
           <label for="p-unit" class="block text-sm font-medium">Unit of Measurement</label>
           <select name="unit" id="p-unit" required
                   class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
-            {% for value, label in form.fields.unit.choices %}
-              {% if value %}
-                <option value="{{ value }}" {% if form.unit.value == value %}selected{% endif %}>{{ label }}</option>
-              {% endif %}
+            {% for unit in units %}
+              <option value="{{ unit.pk }}"
+                {% if form.unit.value|stringformat:'s' == unit.pk|stringformat:'s' %}selected{% endif %}>
+                {{ unit.name }}
+              </option>
             {% endfor %}
           </select>
           {% for error in form.unit.errors %}

@@ -12,7 +12,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -27,13 +27,14 @@ class DeleteProductTestCase(TestCase):
             username="maria", email="maria@example.com", password="pw"
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
+        cls.kg = Unit.objects.create(name="kg", plural="kg")
 
     def setUp(self):
         self.client.force_login(self.admin)
 
     def product(self, name="Typo"):
         return Product.objects.create(
-            name=name, seller=self.dairy, unit="kg", unit_price=Decimal("1.00")
+            name=name, seller=self.dairy, unit=self.kg, unit_price=Decimal("1.00")
         )
 
     def ordered_product(self, name="Whole milk", **item_kwargs):

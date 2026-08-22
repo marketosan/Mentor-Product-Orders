@@ -12,7 +12,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 from orders.views import DEFAULT_HISTORY_PAGE_SIZE, HISTORY_PAGE_SIZES
 
 User = get_user_model()
@@ -29,14 +29,16 @@ class HistoryTestCase(TestCase):
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
         cls.metro = Seller.objects.create(name="Metro Wholesale")
+        cls.litre = Unit.objects.create(name="l", plural="l")
+        cls.box = Unit.objects.create(name="box", plural="boxes")
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price=Decimal("1.15")
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("1.15")
         )
         cls.oat = Product.objects.create(
-            name="Oat milk", seller=cls.dairy, unit="l", unit_price=Decimal("2.40")
+            name="Oat milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("2.40")
         )
         cls.napkins = Product.objects.create(
-            name="Napkins", seller=cls.metro, unit="box", unit_price=Decimal("8.75")
+            name="Napkins", seller=cls.metro, unit=cls.box, unit_price=Decimal("8.75")
         )
 
     def setUp(self):

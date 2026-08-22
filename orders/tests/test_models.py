@@ -8,7 +8,7 @@ from django.db.models import ProtectedError
 from django.test import TestCase
 from django.utils import timezone
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -18,27 +18,28 @@ class ProductConstraintTests(TestCase):
     def setUpTestData(cls):
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
         cls.metro = Seller.objects.create(name="Metro Wholesale")
+        cls.litre = Unit.objects.create(name="l", plural="l")
 
     def test_the_same_name_is_allowed_for_two_different_sellers(self):
         """The shop's reason for per-seller uniqueness: buying one item from
         two suppliers must not force a rename.
         """
-        Product.objects.create(name="Whole milk", seller=self.dairy, unit="l", unit_price="1.15")
-        Product.objects.create(name="Whole milk", seller=self.metro, unit="l", unit_price="1.30")
+        Product.objects.create(name="Whole milk", seller=self.dairy, unit=self.litre, unit_price="1.15")
+        Product.objects.create(name="Whole milk", seller=self.metro, unit=self.litre, unit_price="1.30")
 
         self.assertEqual(Product.objects.filter(name="Whole milk").count(), 2)
 
     def test_the_same_name_twice_for_one_seller_is_rejected(self):
-        Product.objects.create(name="Whole milk", seller=self.dairy, unit="l", unit_price="1.15")
+        Product.objects.create(name="Whole milk", seller=self.dairy, unit=self.litre, unit_price="1.15")
 
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Product.objects.create(name="Whole milk", seller=self.dairy, unit="l", unit_price="1.15")
+            Product.objects.create(name="Whole milk", seller=self.dairy, unit=self.litre, unit_price="1.15")
 
     def test_a_seller_with_products_cannot_be_deleted(self):
         """Order history points at products, which point at sellers, so the
         chain is PROTECTed rather than cascading history away.
         """
-        Product.objects.create(name="Whole milk", seller=self.dairy, unit="l", unit_price="1.15")
+        Product.objects.create(name="Whole milk", seller=self.dairy, unit=self.litre, unit_price="1.15")
 
         with self.assertRaises(ProtectedError):
             self.dairy.delete()
@@ -51,8 +52,10 @@ class OrderItemTests(TestCase):
             username="maria", email="maria@example.com", password="x"
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
+        cls.litre = Unit.objects.create(name="l", plural="l")
+        cls.box = Unit.objects.create(name="box", plural="boxes")
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price=Decimal("1.15")
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("1.15")
         )
 
     def _item(self, **kwargs):
@@ -106,6 +109,42 @@ class OrderItemTests(TestCase):
 
         self.assertEqual(list(OrderItem.objects.open()), [second, first])
 
+    def test_unit_display_is_singular_for_a_quantity_of_one(self):
+        self.assertEqual(self._item(product=self.box_product(), quantity="1").unit_display, "box")
+
+    def test_unit_display_pluralizes_for_anything_else(self):
+        self.assertEqual(self._item(product=self.box_product(), quantity="5").unit_display, "boxes")
+
+    def box_product(self):
+        return Product.objects.create(name="Napkins", seller=self.dairy, unit=self.box)
+
+
+class UnitLabelTests(TestCase):
+    """The printable unit shown next to a count -- "1 box" vs "5 boxes".
+    Only affects display; a unit's own `name` never changes.
+    """
+
+    def test_a_quantity_of_one_uses_the_name(self):
+        box = Unit(name="box", plural="boxes")
+
+        self.assertEqual(box.label_for(1), "box")
+
+    def test_anything_else_uses_the_plural(self):
+        box = Unit(name="box", plural="boxes")
+
+        self.assertEqual(box.label_for(5), "boxes")
+        self.assertEqual(box.label_for(0), "boxes")
+        self.assertEqual(box.label_for(Decimal("0.5")), "boxes")
+
+    def test_a_unit_that_reads_the_same_either_way(self):
+        """"τμχ" doesn't pluralize -- its plural is given as itself, rather
+        than guessed with a suffix.
+        """
+        pieces = Unit(name="τμχ", plural="τμχ")
+
+        self.assertEqual(pieces.label_for(1), "τμχ")
+        self.assertEqual(pieces.label_for(5), "τμχ")
+
 
 class SellerViberLinkTests(TestCase):
     """Numbers are stored the way a person writes them; the link needs them bare."""
@@ -147,16 +186,18 @@ class ProductOrderNameTests(TestCase):
 
     def test_it_defaults_to_empty_rather_than_null(self):
         seller = Seller.objects.create(name="Metro Wholesale")
+        box = Unit.objects.create(name="box", plural="boxes")
         product = Product.objects.create(
-            name="Napkins", seller=seller, unit="box", unit_price="8.75"
+            name="Napkins", seller=seller, unit=box, unit_price="8.75"
         )
 
         self.assertEqual(product.order_name, "")
 
     def test_it_holds_the_sellers_own_name_for_the_item(self):
         seller = Seller.objects.create(name="Metro Wholesale")
+        box = Unit.objects.create(name="box", plural="boxes")
         product = Product.objects.create(
-            name="Napkins", seller=seller, unit="box", unit_price="8.75",
+            name="Napkins", seller=seller, unit=box, unit_price="8.75",
             order_name="NAP-2PLY-250",
         )
         product.full_clean()  # optional field, so this must not raise

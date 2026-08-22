@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -20,8 +20,10 @@ class EditProductTestCase(TestCase):
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
         cls.metro = Seller.objects.create(name="Metro Wholesale")
+        cls.litre = Unit.objects.create(name="l", plural="l")
+        cls.pack = Unit.objects.create(name="pack", plural="packs")
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price=Decimal("1.15")
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("1.15")
         )
 
     def setUp(self):
@@ -31,7 +33,7 @@ class EditProductTestCase(TestCase):
         product = product or self.milk
         data = {
             "name": product.name, "order_name": product.order_name,
-            "seller": product.seller_id, "unit": product.unit,
+            "seller": product.seller_id, "unit": product.unit_id,
             "unit_price": product.unit_price, "origin": origin,
         }
         data.update(overrides)
@@ -75,14 +77,14 @@ class EditProductSaveTests(EditProductTestCase):
     def test_it_changes_every_field(self):
         self.edit(
             name="Whole milk 1L", order_name="MILK-1L",
-            seller=self.metro.pk, unit="pack", unit_price="1.40",
+            seller=self.metro.pk, unit=self.pack.pk, unit_price="1.40",
         )
 
         self.milk.refresh_from_db()
         self.assertEqual(self.milk.name, "Whole milk 1L")
         self.assertEqual(self.milk.order_name, "MILK-1L")
         self.assertEqual(self.milk.seller, self.metro)
-        self.assertEqual(self.milk.unit, "pack")
+        self.assertEqual(self.milk.unit, self.pack)
         self.assertEqual(self.milk.unit_price, Decimal("1.40"))
 
     def test_order_name_can_be_added_to_an_existing_product(self):
@@ -113,7 +115,7 @@ class EditProductSaveTests(EditProductTestCase):
 
     def test_taking_another_products_name_under_one_seller_is_rejected(self):
         Product.objects.create(
-            name="Oat milk", seller=self.dairy, unit="l", unit_price=Decimal("2.40")
+            name="Oat milk", seller=self.dairy, unit=self.litre, unit_price=Decimal("2.40")
         )
 
         response = self.edit(name="oat milk")
@@ -150,7 +152,7 @@ class EditProductSaveTests(EditProductTestCase):
             unit_price_snapshot=Decimal("1.15"), requested_by=self.maria,
         )
 
-        self.edit(name="Whole milk 1L", unit="pack")
+        self.edit(name="Whole milk 1L", unit=self.pack.pk)
 
         item.refresh_from_db()
         self.assertEqual(item.quantity, Decimal("24"))

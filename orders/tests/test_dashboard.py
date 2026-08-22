@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 from orders.views import ORDER_GREETING
 
 User = get_user_model()
@@ -32,14 +32,17 @@ class DashboardTestCase(TestCase):
         )
         cls.metro = Seller.objects.create(name="Metro Wholesale")
 
+        cls.litre = Unit.objects.create(name="l", plural="l")
+        cls.box = Unit.objects.create(name="box", plural="boxes")
+
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price=Decimal("1.15")
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("1.15")
         )
         cls.oat = Product.objects.create(
-            name="Oat milk", seller=cls.dairy, unit="l", unit_price=Decimal("2.40")
+            name="Oat milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("2.40")
         )
         cls.napkins = Product.objects.create(
-            name="Napkins", seller=cls.metro, unit="box", unit_price=Decimal("8.75"),
+            name="Napkins", seller=cls.metro, unit=cls.box, unit_price=Decimal("8.75"),
             order_name="NAP-2PLY-250",
         )
 
@@ -657,8 +660,22 @@ class OrderMessageTests(DashboardTestCase):
 
         message = self.message_for(self.metro)
 
-        self.assertIn("1. NAP-2PLY-250: 2 box", message)
+        self.assertIn("1. NAP-2PLY-250: 2 boxes", message)
         self.assertNotIn("Napkins", message)
+
+    def test_the_unit_pluralizes_when_more_than_one(self):
+        self.item(self.napkins, "2")
+
+        lines = self.message_for(self.metro).splitlines()[2:]
+
+        self.assertEqual(lines[0], "1. NAP-2PLY-250: 2 boxes")
+
+    def test_the_unit_stays_singular_for_exactly_one(self):
+        self.item(self.napkins, "1")
+
+        lines = self.message_for(self.metro).splitlines()[2:]
+
+        self.assertEqual(lines[0], "1. NAP-2PLY-250: 1 box")
 
     def test_it_falls_back_to_the_shop_name(self):
         self.item(self.milk, "24")

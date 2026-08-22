@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from orders.models import Product, Seller
+from orders.models import Product, Seller, Unit
 from orders.search import search_products
 
 
@@ -10,6 +10,7 @@ class ProductSearchTests(TestCase):
         cls.roaster = Seller.objects.create(name="Bertoli Coffee Roasters")
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
         cls.metro = Seller.objects.create(name="Metro Wholesale")
+        cls.kg = Unit.objects.create(name="kg", plural="kg")
 
         for name, seller in [
             ("Whole milk", cls.dairy),
@@ -19,7 +20,7 @@ class ProductSearchTests(TestCase):
             ("Napkins", cls.metro),
         ]:
             Product.objects.create(
-                name=name, seller=seller, unit=Product.Unit.KG, unit_price="1.00"
+                name=name, seller=seller, unit=cls.kg, unit_price="1.00"
             )
 
     def names(self, query):
@@ -53,7 +54,7 @@ class ProductSearchTests(TestCase):
     def test_product_name_matches_outrank_seller_matches(self):
         Product.objects.create(
             name="Metro branded sugar", seller=self.roaster,
-            unit=Product.Unit.KG, unit_price="1.00",
+            unit=self.kg, unit_price="1.00",
         )
         self.assertEqual(self.names("metro")[0], "Metro branded sugar")
 

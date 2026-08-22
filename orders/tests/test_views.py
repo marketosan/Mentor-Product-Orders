@@ -13,7 +13,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -28,14 +28,16 @@ class OrdersTestCase(TestCase):
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
         cls.metro = Seller.objects.create(name="Metro Wholesale")
+        cls.litre = Unit.objects.create(name="l", plural="l")
+        cls.box = Unit.objects.create(name="box", plural="boxes")
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price="1.15"
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price="1.15"
         )
         cls.oat = Product.objects.create(
-            name="Oat milk", seller=cls.dairy, unit="l", unit_price="2.40"
+            name="Oat milk", seller=cls.dairy, unit=cls.litre, unit_price="2.40"
         )
         cls.napkins = Product.objects.create(
-            name="Napkins", seller=cls.metro, unit="box", unit_price="8.75"
+            name="Napkins", seller=cls.metro, unit=cls.box, unit_price="8.75"
         )
 
     def setUp(self):
@@ -194,6 +196,22 @@ class AddItemTests(OrdersTestCase):
         self.assertEqual(response.context["existing"], existing)
         self.assertEqual(response.context["attempted_quantity"], Decimal("10"))
 
+    def test_the_warning_pluralizes_each_quantitys_own_unit(self):
+        """The existing row and the attempted one can each be singular or
+        plural independently -- "1 box" already on the list, "5 boxes" just
+        attempted, or the other way round.
+        """
+        self.open_item(product=self.napkins, quantity="1")
+
+        response = self.client.post(
+            reverse("add_item"), {"product": self.napkins.pk, "quantity": "5"}
+        )
+
+        self.assertContains(response, "1 box")
+        self.assertNotContains(response, "1 boxes")
+        self.assertContains(response, "5 boxes")
+        self.assertEqual(response.context["attempted_unit"], "boxes")
+
     def test_the_warning_offers_only_to_update_the_quantity(self):
         """Agreed deviation from the spec: there is no "add anyway"."""
         self.open_item()
@@ -332,7 +350,7 @@ class NewProductTests(OrdersTestCase):
     def test_it_creates_the_product_and_credits_the_author(self):
         response = self.client.post(reverse("new_product"), {
             "name": "Cinnamon syrup", "seller": self.dairy.pk,
-            "unit": "l", "unit_price": "6.50",
+            "unit": self.litre.pk, "unit_price": "6.50",
         })
 
         product = Product.objects.get(name="Cinnamon syrup")
@@ -347,7 +365,7 @@ class NewProductTests(OrdersTestCase):
     def test_it_stores_the_order_name_when_given(self):
         self.client.post(reverse("new_product"), {
             "name": "Cinnamon syrup", "order_name": "SYR-CIN-1L",
-            "seller": self.dairy.pk, "unit": "l", "unit_price": "6.50",
+            "seller": self.dairy.pk, "unit": self.litre.pk, "unit_price": "6.50",
         })
 
         self.assertEqual(Product.objects.get(name="Cinnamon syrup").order_name, "SYR-CIN-1L")
@@ -358,7 +376,7 @@ class NewProductTests(OrdersTestCase):
         """
         response = self.client.post(reverse("new_product"), {
             "name": "Cinnamon syrup", "seller": self.dairy.pk,
-            "unit": "l", "unit_price": "6.50",
+            "unit": self.litre.pk, "unit_price": "6.50",
         })
 
         self.assertContains(response, "selectProduct(")
@@ -367,7 +385,7 @@ class NewProductTests(OrdersTestCase):
     def test_an_invalid_product_answers_422_and_creates_nothing(self):
         response = self.client.post(reverse("new_product"), {
             "name": "Cinnamon syrup", "seller": self.dairy.pk,
-            "unit": "l", "unit_price": "0",
+            "unit": self.litre.pk, "unit_price": "0",
         })
 
         self.assertEqual(response.status_code, 422)

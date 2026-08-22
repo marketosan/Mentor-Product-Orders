@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -26,6 +26,7 @@ class DeleteSellerTestCase(TestCase):
         cls.maria = User.objects.create_user(
             username="maria", email="maria@example.com", password="pw"
         )
+        cls.litre = Unit.objects.create(name="l", plural="l")
 
     def setUp(self):
         self.client.force_login(self.admin)
@@ -35,7 +36,9 @@ class DeleteSellerTestCase(TestCase):
 
     def seller_with_product(self, name="Green Valley Dairy"):
         seller = self.seller(name)
-        Product.objects.create(name="Whole milk", seller=seller, unit="l", unit_price=Decimal("1.15"))
+        Product.objects.create(
+            name="Whole milk", seller=seller, unit=self.litre, unit_price=Decimal("1.15")
+        )
         return seller
 
     def delete(self, seller):

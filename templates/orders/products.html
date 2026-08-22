@@ -12,6 +12,11 @@
     something missing and then adding it is the usual way to arrive here.
   {% endcomment %}
   <div class="flex flex-wrap items-center gap-2">
+    <a href="{% url 'units' %}"
+       class="inline-flex min-h-11 items-center rounded-md border border-stone-300 px-4 text-base text-stone-600 hover:bg-stone-100 hover:text-stone-900">
+      Units
+    </a>
+
     {% comment %}
       Whole-catalog action, deliberately not scoped to the search box or the
       Active/Inactive tickboxes: it ignores whatever is shown and acts on

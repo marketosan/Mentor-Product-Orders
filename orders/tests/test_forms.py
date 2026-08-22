@@ -10,7 +10,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from orders.forms import AddOrderItemForm, EditOrderItemForm, ProductForm
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -22,8 +22,9 @@ class AddOrderItemFormTests(TestCase):
             username="maria", email="maria@example.com", password="x"
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
+        cls.litre = Unit.objects.create(name="l", plural="l")
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price="1.15"
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price="1.15"
         )
 
     def test_it_freezes_the_price_and_records_who_asked(self):
@@ -84,8 +85,9 @@ class EditOrderItemFormTests(TestCase):
             username="maria", email="maria@example.com", password="x"
         )
         seller = Seller.objects.create(name="Green Valley Dairy")
+        litre = Unit.objects.create(name="l", plural="l")
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=seller, unit="l", unit_price="1.15"
+            name="Whole milk", seller=seller, unit=litre, unit_price="1.15"
         )
 
     def _item(self, urgency=OrderItem.Urgency.LOW):
@@ -131,10 +133,12 @@ class ProductFormTests(TestCase):
     def setUpTestData(cls):
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
         cls.metro = Seller.objects.create(name="Metro Wholesale")
+        cls.litre = Unit.objects.create(name="l", plural="l")
+        cls.box = Unit.objects.create(name="box", plural="boxes")
 
     def test_it_creates_a_product(self):
         form = ProductForm({
-            "name": "Oat milk", "seller": self.dairy.pk, "unit": "l", "unit_price": "2.40",
+            "name": "Oat milk", "seller": self.dairy.pk, "unit": self.litre.pk, "unit_price": "2.40",
         })
         self.assertTrue(form.is_valid(), form.errors)
 
@@ -142,7 +146,7 @@ class ProductFormTests(TestCase):
 
     def test_a_free_product_is_rejected(self):
         form = ProductForm({
-            "name": "Oat milk", "seller": self.dairy.pk, "unit": "l", "unit_price": "0",
+            "name": "Oat milk", "seller": self.dairy.pk, "unit": self.litre.pk, "unit_price": "0",
         })
 
         self.assertFalse(form.is_valid())
@@ -152,18 +156,18 @@ class ProductFormTests(TestCase):
         """The database constraint is case-sensitive; to a shop "Oat milk" and
         "oat milk" from one seller are the same thing, so the form is stricter.
         """
-        Product.objects.create(name="Oat milk", seller=self.dairy, unit="l", unit_price="2.40")
+        Product.objects.create(name="Oat milk", seller=self.dairy, unit=self.litre, unit_price="2.40")
         form = ProductForm({
-            "name": "OAT MILK", "seller": self.dairy.pk, "unit": "l", "unit_price": "2.40",
+            "name": "OAT MILK", "seller": self.dairy.pk, "unit": self.litre.pk, "unit_price": "2.40",
         })
 
         self.assertFalse(form.is_valid())
         self.assertIn("Oat milk", str(form.non_field_errors()))
 
     def test_the_same_name_is_fine_under_a_different_seller(self):
-        Product.objects.create(name="Oat milk", seller=self.dairy, unit="l", unit_price="2.40")
+        Product.objects.create(name="Oat milk", seller=self.dairy, unit=self.litre, unit_price="2.40")
         form = ProductForm({
-            "name": "Oat milk", "seller": self.metro.pk, "unit": "l", "unit_price": "2.10",
+            "name": "Oat milk", "seller": self.metro.pk, "unit": self.litre.pk, "unit_price": "2.10",
         })
 
         self.assertTrue(form.is_valid(), form.errors)
@@ -177,7 +181,7 @@ class ProductFormTests(TestCase):
     def test_order_name_can_be_set_when_creating_a_product(self):
         form = ProductForm({
             "name": "Napkins", "order_name": "NAP-2PLY-250",
-            "seller": self.metro.pk, "unit": "box", "unit_price": "8.75",
+            "seller": self.metro.pk, "unit": self.box.pk, "unit_price": "8.75",
         })
         self.assertTrue(form.is_valid(), form.errors)
 
@@ -188,7 +192,7 @@ class ProductFormTests(TestCase):
         it would be a field to skip on every single add.
         """
         form = ProductForm({
-            "name": "Napkins", "seller": self.metro.pk, "unit": "box", "unit_price": "8.75",
+            "name": "Napkins", "seller": self.metro.pk, "unit": self.box.pk, "unit_price": "8.75",
         })
         self.assertTrue(form.is_valid(), form.errors)
 
@@ -197,12 +201,12 @@ class ProductFormTests(TestCase):
     def test_a_duplicate_check_still_runs_on_the_shop_name(self):
         """Two products differing only in order_name are still one product."""
         Product.objects.create(
-            name="Napkins", seller=self.metro, unit="box", unit_price="8.75",
+            name="Napkins", seller=self.metro, unit=self.box, unit_price="8.75",
             order_name="NAP-2PLY-250",
         )
         form = ProductForm({
             "name": "napkins", "order_name": "SOMETHING-ELSE",
-            "seller": self.metro.pk, "unit": "box", "unit_price": "8.75",
+            "seller": self.metro.pk, "unit": self.box.pk, "unit_price": "8.75",
         })
 
         self.assertFalse(form.is_valid())

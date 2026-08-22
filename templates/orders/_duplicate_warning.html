@@ -8,11 +8,11 @@
   <h2 class="text-lg font-semibold tracking-tight">Already on the list</h2>
   <p class="mt-2 text-sm text-stone-600">
     <span class="font-medium text-stone-900">{{ existing.product.name }}</span> —
-    {{ existing.quantity|floatformat:"-3" }} {{ existing.product.unit }}
+    {{ existing.quantity|floatformat:"-3" }} {{ existing.unit_display }}
     requested by {{ existing.requested_by.username }}, {{ existing.created_at|timesince }} ago.
   </p>
   <p class="mt-1 text-sm text-stone-500">
-    You were adding {{ attempted_quantity|floatformat:"-3" }} {{ existing.product.unit }}.
+    You were adding {{ attempted_quantity|floatformat:"-3" }} {{ attempted_unit }}.
     Update the quantity below instead of listing it twice.
   </p>
 

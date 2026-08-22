@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -23,12 +23,14 @@ class ProductsPageTestCase(TestCase):
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
         cls.metro = Seller.objects.create(name="Metro Wholesale")
+        cls.litre = Unit.objects.create(name="l", plural="l")
+        cls.box = Unit.objects.create(name="box", plural="boxes")
 
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price=Decimal("1.15")
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("1.15")
         )
         cls.napkins = Product.objects.create(
-            name="Napkins", seller=cls.metro, unit="box", unit_price=Decimal("8.75"),
+            name="Napkins", seller=cls.metro, unit=cls.box, unit_price=Decimal("8.75"),
             order_name="NAP-2PLY-250",
         )
 
@@ -245,7 +247,7 @@ class AddFromProductsPageTests(ProductsPageTestCase):
     def create(self, **overrides):
         data = {
             "name": "Cinnamon syrup", "order_name": "", "seller": self.dairy.pk,
-            "unit": "l", "unit_price": "6.50", "origin": "products",
+            "unit": self.litre.pk, "unit_price": "6.50", "origin": "products",
         }
         data.update(overrides)
         return self.client.post(reverse("new_product"), data)
@@ -286,7 +288,7 @@ class AddFromProductsPageTests(ProductsPageTestCase):
         """
         response = self.client.post(reverse("new_product"), {
             "name": "Cardamom", "order_name": "", "seller": self.dairy.pk,
-            "unit": "kg", "unit_price": "9.00",
+            "unit": self.litre.pk, "unit_price": "9.00",
         })
 
         self.assertContains(response, "selectProduct(")
@@ -339,7 +341,7 @@ class EditFromProductsPageTests(ProductsPageTestCase):
     def edit(self, product, **overrides):
         data = {
             "name": product.name, "order_name": product.order_name,
-            "seller": product.seller_id, "unit": product.unit,
+            "seller": product.seller_id, "unit": product.unit_id,
             "unit_price": product.unit_price, "origin": "products",
         }
         data.update(overrides)

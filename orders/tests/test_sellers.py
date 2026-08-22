@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -269,7 +269,8 @@ class ToggleSellerTests(SellerAdminTestCase):
         self.assertIn("reactivated", reactivated["toast"]["message"])
 
     def test_a_deactivated_seller_leaves_product_search(self):
-        Product.objects.create(name="Whole milk", seller=self.dairy, unit="l", unit_price="1.15")
+        litre = Unit.objects.create(name="l", plural="l")
+        Product.objects.create(name="Whole milk", seller=self.dairy, unit=litre, unit_price="1.15")
 
         self.toggle(self.dairy)
 
@@ -277,8 +278,9 @@ class ToggleSellerTests(SellerAdminTestCase):
         self.assertEqual(search_products("milk"), [])
 
     def test_deactivating_does_not_touch_order_history(self):
+        litre = Unit.objects.create(name="l", plural="l")
         product = Product.objects.create(
-            name="Whole milk", seller=self.dairy, unit="l", unit_price="1.15"
+            name="Whole milk", seller=self.dairy, unit=litre, unit_price="1.15"
         )
         item = OrderItem.objects.create(
             product=product, quantity="24", unit_price_snapshot="1.15", requested_by=self.maria

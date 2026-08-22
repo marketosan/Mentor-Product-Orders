@@ -234,7 +234,7 @@
 
             <div class="shrink-0 text-right">
               <div class="leading-tight font-semibold tabular-nums text-stone-900">
-                {{ item.quantity|floatformat:"-3" }}<span class="ml-1 text-sm font-normal text-stone-500">{{ item.product.unit }}</span>
+                {{ item.quantity|floatformat:"-3" }}<span class="ml-1 text-sm font-normal text-stone-500">{{ item.unit_display }}</span>
               </div>
               {% comment %}
                 The price frozen when the item was requested, not the catalog's

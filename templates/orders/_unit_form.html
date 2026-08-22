@@ -1,0 +1,54 @@
+{% comment %}
+  Body of the unit dialog, serving both add and edit. Inputs are text-base
+  (16px) and py-3 so phones do not zoom on focus and the targets stay
+  thumb-sized.
+{% endcomment %}
+<form hx-post="{% if unit %}{% url 'edit_unit' unit.pk %}{% else %}{% url 'new_unit' %}{% endif %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      class="rounded-2xl bg-white p-5 shadow-xl">
+  {% csrf_token %}
+
+  <h2 class="text-lg font-semibold tracking-tight">{{ title }}</h2>
+  <p class="mt-1 text-sm text-stone-500">
+    The plural is what shows for any quantity other than one, e.g. &ldquo;boxes&rdquo;.
+    Give the same word twice if it does not change.
+  </p>
+
+  {% for error in form.non_field_errors %}
+    <p class="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{{ error }}</p>
+  {% endfor %}
+
+  <div class="mt-4 space-y-4">
+    <div>
+      <label for="u-name" class="block text-sm font-medium">Name</label>
+      <input type="text" name="name" id="u-name" required autocomplete="off"
+             value="{{ form.name.value|default:'' }}"
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.name.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+
+    <div>
+      <label for="u-plural" class="block text-sm font-medium">Plural</label>
+      <input type="text" name="plural" id="u-plural" required autocomplete="off"
+             value="{{ form.plural.value|default:'' }}"
+             class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
+      {% for error in form.plural.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="mt-6 flex gap-3">
+    <button type="button" onclick="document.getElementById('modal').close()"
+            class="flex-1 rounded-md border border-stone-300 px-4 py-3 text-base hover:bg-stone-50">
+      Cancel
+    </button>
+    <button type="submit"
+            class="flex-1 rounded-md bg-[#4a7355] px-4 py-3 text-base text-white hover:bg-[#3d6047]">
+      {% if unit %}Save{% else %}Add unit{% endif %}
+    </button>
+  </div>
+</form>

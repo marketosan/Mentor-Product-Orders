@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import OrderItem, Product, Seller
+from .models import OrderItem, Product, Seller, Unit
 
 
 class UrgentCheckboxMixin:
@@ -97,6 +97,26 @@ class SellerForm(forms.ModelForm):
             clash = clash.exclude(pk=self.instance.pk)
         if clash.exists():
             raise forms.ValidationError(f"There is already a seller called “{clash.first().name}”.")
+        return name
+
+
+class UnitForm(forms.ModelForm):
+    """Create or rename a measure -- kg, box, piece. Admin-only, from
+    /products/units/."""
+
+    class Meta:
+        model = Unit
+        fields = ["name", "plural"]
+
+    def clean_name(self):
+        # Case-insensitive for the same reason as SellerForm: two spellings
+        # of the same word are still one unit to a shop.
+        name = self.cleaned_data["name"].strip()
+        clash = Unit.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            clash = clash.exclude(pk=self.instance.pk)
+        if clash.exists():
+            raise forms.ValidationError(f"There is already a unit called “{clash.first().name}”.")
         return name
 
 

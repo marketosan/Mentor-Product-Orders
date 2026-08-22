@@ -13,8 +13,8 @@ from django.views.decorators.http import require_POST
 
 from accounts.decorators import shop_admin_required
 
-from .forms import AddOrderItemForm, EditOrderItemForm, ProductForm, SellerForm
-from .models import OrderItem, Product, Seller
+from .forms import AddOrderItemForm, EditOrderItemForm, ProductForm, SellerForm, UnitForm
+from .models import OrderItem, Product, Seller, Unit
 from .search import search_products
 
 PANEL = "orders/_panel.html"
@@ -22,6 +22,8 @@ DASHBOARD_BODY = "orders/_dashboard_body.html"
 PRODUCT_FORM = "orders/_product_form.html"
 PRODUCT_LIST = "orders/_product_list.html"
 HISTORY_BODY = "orders/_history_body.html"
+UNIT_LIST = "orders/_unit_list.html"
+UNIT_FORM = "orders/_unit_form.html"
 
 # Opens the order message. Greek, because it is read by the supplier, not
 # by anyone using the app.
@@ -54,7 +56,9 @@ def _panel_context(*, add_form=None, edit_form=None, editing_id=None, just_added
     and the add form clears itself simply by being rendered fresh.
     """
     return {
-        "items": OrderItem.objects.open().select_related("product__seller", "requested_by"),
+        "items": OrderItem.objects.open().select_related(
+            "product__seller", "product__unit", "requested_by"
+        ),
         "add_form": add_form if add_form is not None else AddOrderItemForm(),
         "edit_form": edit_form,
         "editing_id": editing_id,
@@ -96,16 +100,21 @@ def add_item(request):
     existing = (
         OrderItem.objects.open()
         .filter(product=form.cleaned_data["product"])
-        .select_related("product", "requested_by")
+        .select_related("product__unit", "requested_by")
         .first()
     )
     if existing:
         # Warn rather than silently duplicating or auto-merging quantities.
         # This reply goes to the modal, not to the panel the form aims at.
+        attempted_quantity = form.cleaned_data["quantity"]
         response = render(
             request,
             "orders/_duplicate_warning.html",
-            {"existing": existing, "attempted_quantity": form.cleaned_data["quantity"]},
+            {
+                "existing": existing,
+                "attempted_quantity": attempted_quantity,
+                "attempted_unit": existing.product.unit.label_for(attempted_quantity),
+            },
         )
         response["HX-Retarget"] = "#modal-body"
         response["HX-Reswap"] = "innerHTML"
@@ -165,7 +174,7 @@ def _order_message(items):
         name = item.product.order_name or item.product.name
         urgent = " (urgent)" if item.urgency == OrderItem.Urgency.HIGH else ""
         lines.append(
-            f"{position}. {name}: {_format_quantity(item.quantity)} {item.product.unit}{urgent}"
+            f"{position}. {name}: {_format_quantity(item.quantity)} {item.unit_display}{urgent}"
         )
     return "\n".join(lines)
 
@@ -213,7 +222,7 @@ def _open_items_by_seller():
     """
     items = (
         OrderItem.objects.open()
-        .select_related("product__seller", "requested_by")
+        .select_related("product__seller", "product__unit", "requested_by")
         .annotate(
             urgency_rank=Case(
                 When(urgency=OrderItem.Urgency.HIGH, then=Value(0)),
@@ -607,6 +616,7 @@ def new_product(request):
             "show_inactive": show_inactive,
             "title": "New product",
             "sellers": Seller.objects.filter(is_active=True),
+            "units": Unit.objects.all(),
         },
         status=status,
     )
@@ -647,7 +657,7 @@ def _history_context(request):
         page_size = DEFAULT_HISTORY_PAGE_SIZE
 
     items = OrderItem.objects.completed().select_related(
-        "product__seller", "requested_by", "completed_by"
+        "product__seller", "product__unit", "requested_by", "completed_by"
     )
     if days is not None:
         items = items.filter(completed_at__gte=timezone.now() - timedelta(days=days))
@@ -710,7 +720,7 @@ def _product_list_context(request):
     """
     query = (request.POST.get("q") or request.GET.get("q") or "").strip()
     show_active, show_inactive = _active_filter(request)
-    products = Product.objects.select_related("seller").annotate(
+    products = Product.objects.select_related("seller", "unit").annotate(
         open_count=Count("order_items", filter=Q(order_items__completed_at__isnull=True)),
         # Whether the row can be deleted outright. A product that has ever been
         # ordered is part of history and only gets deactivated -- PROTECT on
@@ -791,6 +801,7 @@ def edit_product(request, pk):
             "show_inactive": show_inactive,
             "title": "Edit product",
             "sellers": Seller.objects.filter(is_active=True),
+            "units": Unit.objects.all(),
         },
         status=status,
     )
@@ -898,3 +909,50 @@ def _saved_product(request, product, origin, message=None):
         toast={"message": message or f"{product.name} updated"},
         closeModal=True,
     )
+
+
+@shop_admin_required
+def units(request):
+    """The measures products can be ordered in. A products subpage, not a
+    top-level one -- a unit belongs to no single product, but nothing outside
+    the catalog cares about it either.
+    """
+    return render(request, "orders/units.html", {"units": Unit.objects.all()})
+
+
+@shop_admin_required
+def new_unit(request):
+    """Add a unit, in the same dialog pattern the new-seller form uses."""
+    if request.method == "POST":
+        form = UnitForm(request.POST)
+        if form.is_valid():
+            unit = form.save()
+            return _saved_unit(request, f"{unit.name} added")
+        return render(request, UNIT_FORM, {"form": form, "title": "New unit"}, status=422)
+
+    return render(request, UNIT_FORM, {"form": UnitForm(), "title": "New unit"})
+
+
+@shop_admin_required
+def edit_unit(request, pk):
+    unit = get_object_or_404(Unit, pk=pk)
+    if request.method == "POST":
+        form = UnitForm(request.POST, instance=unit)
+        if form.is_valid():
+            form.save()
+            return _saved_unit(request, f"{unit.name} updated")
+        return render(
+            request, UNIT_FORM, {"form": form, "unit": unit, "title": "Edit unit"}, status=422
+        )
+
+    return render(
+        request, UNIT_FORM, {"form": UnitForm(instance=unit), "unit": unit, "title": "Edit unit"}
+    )
+
+
+def _saved_unit(request, message):
+    """Reply to a successful dialog save, same shape as `_saved_seller`."""
+    response = render(request, UNIT_LIST, {"units": Unit.objects.all()})
+    response["HX-Retarget"] = "#unit-list"
+    response["HX-Reswap"] = "outerHTML"
+    return _trigger(response, toast={"message": message}, closeModal=True)

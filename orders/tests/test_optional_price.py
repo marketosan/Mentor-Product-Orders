@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from orders.forms import AddOrderItemForm, ProductForm
-from orders.models import OrderItem, Product, Seller
+from orders.models import OrderItem, Product, Seller, Unit
 
 User = get_user_model()
 
@@ -28,11 +28,12 @@ class OptionalPriceTestCase(TestCase):
             username="maria", email="maria@example.com", password="pw"
         )
         cls.dairy = Seller.objects.create(name="Green Valley Dairy")
+        cls.litre = Unit.objects.create(name="l", plural="l")
         cls.milk = Product.objects.create(
-            name="Whole milk", seller=cls.dairy, unit="l", unit_price=Decimal("1.15")
+            name="Whole milk", seller=cls.dairy, unit=cls.litre, unit_price=Decimal("1.15")
         )
         cls.mystery = Product.objects.create(
-            name="Cinnamon syrup", seller=cls.dairy, unit="l", unit_price=None
+            name="Cinnamon syrup", seller=cls.dairy, unit=cls.litre, unit_price=None
         )
 
     def order(self, product, quantity="10", **kwargs):
@@ -44,7 +45,7 @@ class OptionalPriceTestCase(TestCase):
 
 class ProductFormPriceTests(OptionalPriceTestCase):
     def form(self, **overrides):
-        data = {"name": "Cardamom", "seller": self.dairy.pk, "unit": "kg", "unit_price": ""}
+        data = {"name": "Cardamom", "seller": self.dairy.pk, "unit": self.litre.pk, "unit_price": ""}
         data.update(overrides)
         return ProductForm(data)
 
@@ -74,7 +75,7 @@ class ProductFormPriceTests(OptionalPriceTestCase):
 
     def test_a_price_can_be_added_later(self):
         form = ProductForm(
-            {"name": self.mystery.name, "seller": self.dairy.pk, "unit": "l",
+            {"name": self.mystery.name, "seller": self.dairy.pk, "unit": self.litre.pk,
              "unit_price": "6.50"},
             instance=self.mystery,
         )
@@ -84,7 +85,7 @@ class ProductFormPriceTests(OptionalPriceTestCase):
 
     def test_a_price_can_be_cleared_again(self):
         form = ProductForm(
-            {"name": self.milk.name, "seller": self.dairy.pk, "unit": "l", "unit_price": ""},
+            {"name": self.milk.name, "seller": self.dairy.pk, "unit": self.litre.pk, "unit_price": ""},
             instance=self.milk,
         )
         self.assertTrue(form.is_valid(), form.errors)

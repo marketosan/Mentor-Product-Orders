@@ -44,21 +44,37 @@ class Seller(models.Model):
         return f"viber://chat?number={quote(cleaned, safe='')}"
 
 
+class Unit(models.Model):
+    """A measure a product can be ordered in -- kg, box, piece.
+
+    A row rather than a hardcoded list, so the shop can add one from
+    /products/units/ without a code change. Managed from there rather than
+    the products page itself since a unit belongs to no single product.
+    """
+
+    name = models.CharField(max_length=20, unique=True)
+    # The printable plural, shown wherever a unit sits next to a count other
+    # than one -- "5 boxes". Some units read the same either way ("τμχ"),
+    # so this is always given explicitly rather than guessed with a suffix.
+    plural = models.CharField(max_length=20)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def label_for(self, quantity) -> str:
+        """The name for a quantity of 1, the plural for anything else."""
+        return self.name if quantity == 1 else self.plural
+
+
 class Product(models.Model):
     """A catalog item, always tied to the seller it is bought from.
 
     Names are unique per seller, so the same item can be stocked from two
     different suppliers without renaming it.
     """
-
-    class Unit(models.TextChoices):
-        KG = "kg", "kg"
-        G = "g", "g"
-        L = "l", "l"
-        ML = "ml", "ml"
-        PIECE = "piece", "piece"
-        PACK = "pack", "pack"
-        BOX = "box", "box"
 
     name = models.CharField(max_length=200)
     # What the seller calls this item on their own order sheet, when that
@@ -69,7 +85,7 @@ class Product(models.Model):
         blank=True,
         help_text="Optional. The seller's own name for this product, for use when ordering.",
     )
-    unit = models.CharField(max_length=10, choices=Unit.choices)
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="products")
     # Optional: a product can be added mid-order by someone who does not know
     # what it costs. Null means "not known", which is deliberately different
     # from 0.00 -- a zero here would quietly understate every order total.
@@ -147,7 +163,13 @@ class OrderItem(models.Model):
         indexes = [models.Index(fields=["completed_at", "product"])]
 
     def __str__(self) -> str:
-        return f"{self.quantity} {self.product.unit} {self.product.name}"
+        return f"{self.quantity} {self.unit_display} {self.product.name}"
+
+    @property
+    def unit_display(self) -> str:
+        """"piece" for 1, "pieces" for anything else -- this item's own
+        quantity against its product's unit."""
+        return self.product.unit.label_for(self.quantity)
 
     @property
     def is_open(self) -> bool:
