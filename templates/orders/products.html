@@ -7,30 +7,81 @@
   <h1 class="text-2xl font-semibold tracking-tight">Products</h1>
 
   {% comment %}
-    hx-include picks up the search box, so whatever was being searched for
-    prefills the name -- searching for something missing and then adding it is
-    the usual way to arrive here.
+    hx-include picks up the search box and the Active/Inactive tickboxes, so
+    whatever was being searched for prefills the name -- searching for
+    something missing and then adding it is the usual way to arrive here.
   {% endcomment %}
-  <button type="button"
-          hx-get="{% url 'new_product' %}?origin=products"
-          hx-include="#product-list-search"
-          hx-target="#modal-body"
-          hx-swap="innerHTML"
-          hx-on::after-request="document.getElementById('modal').showModal()"
-          class="rounded-md bg-[#4a7355] px-4 py-2.5 text-base text-white hover:bg-[#3d6047]">
-    Add product
-  </button>
+  <div class="flex flex-wrap items-center gap-2">
+    {% comment %}
+      Whole-catalog action, deliberately not scoped to the search box or the
+      Active/Inactive tickboxes: it ignores whatever is shown and acts on
+      every product, same split as the per-row buttons below (delete if
+      never ordered, deactivate otherwise).
+    {% endcomment %}
+    <button type="button"
+            hx-post="{% url 'delete_all_products' %}"
+            hx-target="#product-list" hx-swap="outerHTML"
+            hx-confirm="Delete every product that's never been ordered, and deactivate the rest? This can't be undone for the ones deleted."
+            class="inline-flex min-h-11 items-center rounded-md border border-stone-300 px-4 text-base text-stone-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600">
+      Delete all
+    </button>
+
+    <button type="button"
+            hx-get="{% url 'new_product' %}?origin=products"
+            hx-include="#product-filters"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="document.getElementById('modal').showModal()"
+            class="rounded-md bg-[#4a7355] px-4 py-2.5 text-base text-white hover:bg-[#3d6047]">
+      Add product
+    </button>
+  </div>
 </div>
 
-<div class="mt-4">
-  <label for="product-list-search" class="sr-only">Search products</label>
-  <input type="search" name="q" id="product-list-search" value="{{ query }}"
-         placeholder="Search by name, order name or seller…" autocomplete="off"
-         hx-get="{% url 'products' %}"
-         hx-trigger="input changed delay:200ms, search"
-         hx-target="#product-list"
-         hx-swap="outerHTML"
-         class="w-full rounded-md border border-stone-300 px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+<div id="product-filters" class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+  {% comment %}
+    A ticked checkbox present in the request means "on"; unticked, it vanishes
+    entirely, same as any HTML form. This marker is what tells that apart from
+    the filter never having been submitted at all -- see _active_filter in
+    views.py. Its presence, not its value, is what matters, so both tickboxes
+    unticked still reads as a deliberate, empty selection rather than falling
+    back to the active-only default.
+  {% endcomment %}
+  <input type="hidden" name="filtered" value="1">
+
+  <div class="min-w-[12rem] flex-1">
+    <label for="product-list-search" class="sr-only">Search products</label>
+    <input type="search" name="q" id="product-list-search" value="{{ query }}"
+           placeholder="Search by name, order name or seller…" autocomplete="off"
+           hx-get="{% url 'products' %}"
+           hx-trigger="input changed delay:200ms, search"
+           hx-include="#product-filters"
+           hx-target="#product-list"
+           hx-swap="outerHTML"
+           class="w-full rounded-md border border-stone-300 px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+  </div>
+
+  <label class="flex min-h-11 cursor-pointer items-center gap-2 text-sm select-none">
+    <input type="checkbox" name="active" value="1" {% if show_active %}checked{% endif %}
+           hx-get="{% url 'products' %}"
+           hx-trigger="change"
+           hx-include="#product-filters"
+           hx-target="#product-list"
+           hx-swap="outerHTML"
+           class="h-4 w-4 rounded border-stone-300 accent-[#71a07c]">
+    Active
+  </label>
+
+  <label class="flex min-h-11 cursor-pointer items-center gap-2 text-sm select-none">
+    <input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %}
+           hx-get="{% url 'products' %}"
+           hx-trigger="change"
+           hx-include="#product-filters"
+           hx-target="#product-list"
+           hx-swap="outerHTML"
+           class="h-4 w-4 rounded border-stone-300 accent-[#71a07c]">
+    Inactive
+  </label>
 </div>
 
 {% include "orders/_product_list.html" %}

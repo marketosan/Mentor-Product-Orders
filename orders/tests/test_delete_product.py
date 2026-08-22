@@ -47,6 +47,9 @@ class DeleteProductTestCase(TestCase):
     def delete(self, product):
         return self.client.post(reverse("delete_product", args=[product.pk]))
 
+    def delete_all(self):
+        return self.client.post(reverse("delete_all_products"))
+
     def toggle(self, product):
         return self.client.post(reverse("toggle_product", args=[product.pk]))
 
@@ -178,10 +181,73 @@ class ToggleProductTests(DeleteProductTestCase):
         target = self.product("Napkins")
 
         response = self.client.post(
-            reverse("toggle_product", args=[target.pk]), {"q": "napkins"}
+            reverse("toggle_product", args=[target.pk]),
+            # Both tickboxes on: toggling flips Napkins to inactive, and the
+            # default (active-only) filter would otherwise hide the very row
+            # this test is checking the search kept.
+            {"q": "napkins", "filtered": "1", "active": "1", "inactive": "1"},
         )
 
         self.assertEqual([p.name for p in response.context["products"]], ["Napkins"])
+
+
+class DeleteAllProductsTests(DeleteProductTestCase):
+    def test_unused_products_are_deleted_and_used_ones_deactivated(self):
+        unused = self.product("Typo")
+        used = self.ordered_product("Whole milk")
+
+        self.delete_all()
+
+        self.assertFalse(Product.objects.filter(pk=unused.pk).exists())
+        used.refresh_from_db()
+        self.assertFalse(used.is_active)
+        self.assertTrue(Product.objects.filter(pk=used.pk).exists())
+
+    def test_an_already_inactive_used_product_is_left_alone(self):
+        used = self.ordered_product("Whole milk")
+        Product.objects.filter(pk=used.pk).update(is_active=False)
+
+        response = self.delete_all()
+
+        used.refresh_from_db()
+        self.assertFalse(used.is_active)
+        self.assertNotIn("deactivated", self.toast(response))
+
+    def test_the_toast_reports_both_counts(self):
+        self.product("Typo")
+        self.ordered_product("Whole milk")
+
+        message = self.toast(self.delete_all())
+
+        self.assertIn("1 deleted", message)
+        self.assertIn("1 deactivated", message)
+
+    def test_an_empty_catalog_says_so(self):
+        message = self.toast(self.delete_all())
+
+        self.assertIn("No products to remove", message)
+
+    def test_it_ignores_the_search_box_and_acts_on_everyone(self):
+        """The deletion itself is not scoped to whatever the search box holds
+        -- only the redisplayed list is, same as any row action.
+        """
+        hidden_by_search = self.product("Typo")
+
+        self.client.post(reverse("delete_all_products"), {"q": "nothing matches this"})
+
+        self.assertFalse(Product.objects.filter(pk=hidden_by_search.pk).exists())
+
+    def test_it_ignores_the_active_filter_too(self):
+        """Whole-catalog action: even a product hidden by the Inactive-only
+        view still gets swept up.
+        """
+        hidden_by_filter = self.product("Typo")
+
+        self.client.post(
+            reverse("delete_all_products"), {"filtered": "1", "active": "0", "inactive": "1"}
+        )
+
+        self.assertFalse(Product.objects.filter(pk=hidden_by_filter.pk).exists())
 
 
 class ProductRemovalPermissionTests(DeleteProductTestCase):
@@ -198,6 +264,13 @@ class ProductRemovalPermissionTests(DeleteProductTestCase):
 
         self.assertEqual(self.toggle(product).status_code, 403)
 
+    def test_an_employee_cannot_delete_all(self):
+        product = self.product()
+        self.client.force_login(self.maria)
+
+        self.assertEqual(self.delete_all().status_code, 403)
+        self.assertTrue(Product.objects.filter(pk=product.pk).exists())
+
     def test_both_refuse_a_get(self):
         product = self.product()
 
@@ -206,6 +279,8 @@ class ProductRemovalPermissionTests(DeleteProductTestCase):
                 url = reverse(name, args=[product.pk])
 
                 self.assertEqual(self.client.get(url).status_code, 405)
+
+        self.assertEqual(self.client.get(reverse("delete_all_products")).status_code, 405)
 
     def test_an_unknown_product_is_a_404(self):
         self.assertEqual(

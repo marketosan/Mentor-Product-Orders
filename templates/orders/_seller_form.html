@@ -6,7 +6,7 @@
 <form hx-post="{% if seller %}{% url 'edit_seller' seller.pk %}{% else %}{% url 'new_seller' %}{% endif %}"
       hx-target="#modal-body"
       hx-swap="innerHTML"
-      hx-include="#seller-search"
+      hx-include="#seller-filters"
       class="rounded-2xl bg-white p-5 shadow-xl">
   {% csrf_token %}
 

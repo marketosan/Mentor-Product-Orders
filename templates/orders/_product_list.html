@@ -47,7 +47,7 @@
       <div class="flex w-full shrink-0 items-center justify-end gap-0.5 sm:w-auto">
         <button hx-get="{% url 'edit_product' product.pk %}?origin=products"
                 hx-target="#modal-body" hx-swap="innerHTML"
-                hx-include="#product-list-search"
+                hx-include="#product-filters"
                 hx-on::after-request="document.getElementById('modal').showModal()"
                 aria-label="Edit {{ product.name }}" title="Edit"
                 class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-900">
@@ -68,7 +68,7 @@
         {% endcomment %}
         {% if product.is_active %}
           <button hx-post="{% url 'toggle_product' product.pk %}"
-                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-list-search"
+                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-filters"
                   hx-confirm="Deactivate {{ product.name }}? It stays in past orders but nobody can add it to the list."
                   aria-label="Deactivate {{ product.name }}" title="Deactivate"
                   class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-900">
@@ -79,7 +79,7 @@
           </button>
         {% else %}
           <button hx-post="{% url 'toggle_product' product.pk %}"
-                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-list-search"
+                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-filters"
                   class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-[#4a7355] hover:bg-[#eef4f0] hover:text-[#3d6047]">
             Reactivate
           </button>
@@ -87,7 +87,7 @@
 
         {% if not product.order_count %}
           <button hx-post="{% url 'delete_product' product.pk %}"
-                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-list-search"
+                  hx-target="#product-list" hx-swap="outerHTML" hx-include="#product-filters"
                   hx-confirm="Delete {{ product.name }} for good? It has never been ordered, so nothing is lost."
                   aria-label="Delete {{ product.name }}" title="Delete permanently"
                   class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-red-50 hover:text-red-600">
@@ -102,7 +102,10 @@
     </div>
   {% empty %}
     <div class="px-4 py-12 text-center">
-      {% if query %}
+      {% if not show_active and not show_inactive %}
+        <p class="font-medium text-stone-700">Nothing to show</p>
+        <p class="mt-1 text-sm text-stone-500">Tick Active or Inactive above to see products.</p>
+      {% elif query %}
         <p class="font-medium text-stone-700">No product matches “{{ query }}”</p>
         <p class="mt-1 text-sm text-stone-500">Try part of a name, order name or seller.</p>
       {% else %}

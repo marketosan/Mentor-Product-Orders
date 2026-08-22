@@ -328,8 +328,27 @@ SELLER_LIST = "orders/_seller_list.html"
 SELLER_FORM = "orders/_seller_form.html"
 
 
+def _active_filter(request):
+    """The Active/Inactive tickboxes' state, wherever they rode in on.
+
+    Shared by the sellers and products pages, which both filter this way. An
+    unticked checkbox vanishes from the request entirely, same as any HTML
+    form -- there is no value to read, ticked or not. So a plain hidden
+    `filtered` marker rides alongside the tickboxes instead: its presence
+    means "the filter UI submitted this request, read active/inactive as
+    given, including neither being ticked". Its absence means the tickboxes
+    have never been on the page for this request at all -- true only of the
+    very first, plain page load -- and that is the one place the default
+    (active only) applies.
+    """
+    source = request.POST if request.method == "POST" else request.GET
+    if "filtered" not in source:
+        return True, False
+    return source.get("active") == "1", source.get("inactive") == "1"
+
+
 def _seller_list_context(request):
-    """Sellers, narrowed by the search box.
+    """Sellers, narrowed by the search box and the Active/Inactive tickboxes.
 
     Plain substring matching on name, phone and email rather than the fuzzy
     ranking products get: a shop has a handful of suppliers and knows their
@@ -340,12 +359,29 @@ def _seller_list_context(request):
     admin is working through.
     """
     query = (request.POST.get("q") or request.GET.get("q") or "").strip()
-    sellers = Seller.objects.annotate(product_count=Count("products"))
+    show_active, show_inactive = _active_filter(request)
+    sellers = Seller.objects.annotate(
+        # Whether the row can be deleted outright. A seller with any products
+        # is either in use or reachable through order history via them, and
+        # PROTECT on Product.seller would refuse the delete anyway.
+        product_count=Count("products"),
+    )
     if query:
         sellers = sellers.filter(
             Q(name__icontains=query) | Q(phone__icontains=query) | Q(email__icontains=query)
         )
-    return {"sellers": sellers, "query": query}
+    if show_active and not show_inactive:
+        sellers = sellers.filter(is_active=True)
+    elif show_inactive and not show_active:
+        sellers = sellers.filter(is_active=False)
+    elif not show_active and not show_inactive:
+        sellers = sellers.none()
+    return {
+        "sellers": sellers,
+        "query": query,
+        "show_active": show_active,
+        "show_inactive": show_inactive,
+    }
 
 
 @shop_admin_required
@@ -422,6 +458,33 @@ def toggle_seller(request, pk):
     return _toast(
         render(request, SELLER_LIST, _seller_list_context(request)),
         f"{seller.name} {verb}",
+    )
+
+
+@shop_admin_required
+@require_POST
+def delete_seller(request, pk):
+    """Remove a supplier outright -- only one with no products at all.
+
+    Same reasoning as `delete_product`: a seller with nothing under it was
+    never really used, so a typo or an abandoned entry can go for good.
+    Anything with products is refused rather than deleted -- PROTECT on
+    Product.seller would raise anyway, and those products (and any history
+    behind them) still need a seller to point at.
+    """
+    seller = get_object_or_404(Seller, pk=pk)
+
+    if seller.products.exists():
+        return _toast(
+            render(request, SELLER_LIST, _seller_list_context(request)),
+            f"{seller.name} has products, so it cannot be deleted. Deactivate it instead.",
+        )
+
+    name = seller.name
+    seller.delete()
+    return _toast(
+        render(request, SELLER_LIST, _seller_list_context(request)),
+        f"{name} deleted",
     )
 
 
@@ -509,6 +572,7 @@ def new_product(request):
     """
     origin = request.POST.get("origin") or request.GET.get("origin") or ""
     query = (request.POST.get("q") or request.GET.get("q") or "").strip()
+    show_active, show_inactive = _active_filter(request)
 
     if request.method == "POST":
         form = ProductForm(request.POST)
@@ -539,6 +603,8 @@ def new_product(request):
             "form": form,
             "origin": origin,
             "query": query,
+            "show_active": show_active,
+            "show_inactive": show_inactive,
             "title": "New product",
             "sellers": Seller.objects.filter(is_active=True),
         },
@@ -632,16 +698,18 @@ def history(request):
 
 
 def _product_list_context(request):
-    """The catalog, narrowed by the search box.
+    """The catalog, narrowed by the search box and the Active/Inactive tickboxes.
 
     Plain substring matching over the shop's name, the seller's name for it and
     the supplier -- not `search.search_products`, whose fuzzy ranking exists to
     help someone half-remember a product while adding an order. Managing the
     catalog wants predictable matching instead.
 
-    Read from POST as well as GET so saving an edit keeps the current search.
+    Read from POST as well as GET so saving an edit keeps the current search
+    and filter.
     """
     query = (request.POST.get("q") or request.GET.get("q") or "").strip()
+    show_active, show_inactive = _active_filter(request)
     products = Product.objects.select_related("seller").annotate(
         open_count=Count("order_items", filter=Q(order_items__completed_at__isnull=True)),
         # Whether the row can be deleted outright. A product that has ever been
@@ -655,7 +723,18 @@ def _product_list_context(request):
             | Q(order_name__icontains=query)
             | Q(seller__name__icontains=query)
         )
-    return {"products": products.order_by("name"), "query": query}
+    if show_active and not show_inactive:
+        products = products.filter(is_active=True)
+    elif show_inactive and not show_active:
+        products = products.filter(is_active=False)
+    elif not show_active and not show_inactive:
+        products = products.none()
+    return {
+        "products": products.order_by("name"),
+        "query": query,
+        "show_active": show_active,
+        "show_inactive": show_inactive,
+    }
 
 
 @shop_admin_required
@@ -686,6 +765,7 @@ def edit_product(request, pk):
     """
     product = get_object_or_404(Product, pk=pk)
     origin = request.POST.get("origin") or request.GET.get("origin") or ""
+    show_active, show_inactive = _active_filter(request)
 
     if request.method == "POST":
         form = ProductForm(request.POST, instance=product)
@@ -705,8 +785,10 @@ def edit_product(request, pk):
             "product": product,
             "origin": origin,
             # Carried through the dialog so saving from the products page keeps
-            # the search rather than resetting to the whole catalog.
+            # the search and Active/Inactive filter rather than resetting them.
             "query": (request.POST.get("q") or request.GET.get("q") or "").strip(),
+            "show_active": show_active,
+            "show_inactive": show_inactive,
             "title": "Edit product",
             "sellers": Seller.objects.filter(is_active=True),
         },
@@ -762,6 +844,39 @@ def delete_product(request, pk):
     return _toast(
         render(request, PRODUCT_LIST, _product_list_context(request)),
         f"{name} deleted",
+    )
+
+
+@shop_admin_required
+@require_POST
+def delete_all_products(request):
+    """Clear the whole catalog in one action, whatever the search box holds.
+
+    Same split as the per-row buttons, applied to every product: never
+    ordered gets deleted outright; anything with order history is
+    deactivated instead, since PROTECT would refuse the delete and rule 3
+    says keep it for history.
+    """
+    never_ordered_ids = list(
+        Product.objects.annotate(order_count=Count("order_items"))
+        .filter(order_count=0)
+        .values_list("pk", flat=True)
+    )
+    deleted_count = len(never_ordered_ids)
+    Product.objects.filter(pk__in=never_ordered_ids).delete()
+
+    deactivated_count = Product.objects.filter(is_active=True).update(is_active=False)
+
+    parts = []
+    if deleted_count:
+        parts.append(f"{deleted_count} deleted")
+    if deactivated_count:
+        parts.append(f"{deactivated_count} deactivated")
+    message = ", ".join(parts) if parts else "No products to remove"
+
+    return _toast(
+        render(request, PRODUCT_LIST, _product_list_context(request)),
+        message,
     )
 
 

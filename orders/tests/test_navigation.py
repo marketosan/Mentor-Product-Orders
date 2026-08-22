@@ -114,11 +114,15 @@ class SellersPageTests(NavigationTestCase):
 
     def test_inactive_sellers_are_shown_and_labelled(self):
         """They are deactivated rather than deleted because history points at
-        them, so this page has to show them even though search hides them.
+        them, so this page has to show them with the Inactive tickbox on,
+        even though the active-only default and product search both hide
+        them.
         """
         Seller.objects.create(name="Old Supplier", is_active=False)
 
-        response = self.client.get(reverse("sellers"))
+        response = self.client.get(
+            reverse("sellers"), {"filtered": "1", "active": "1", "inactive": "1"}
+        )
 
         self.assertContains(response, "Old Supplier")
         self.assertContains(response, "inactive")

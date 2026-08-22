@@ -106,11 +106,15 @@ class ProductSearchPageTests(ProductsPageTestCase):
         """
         self.assertEqual(self.names(self.search("mikl")), [])
 
-    def test_inactive_products_still_appear(self):
-        """They are hidden from ordering, but this is where they are managed."""
+    def test_inactive_products_can_still_be_found(self):
+        """Hidden from ordering by the default filter, but findable here with
+        the Inactive tickbox on -- this is where they are managed."""
         Product.objects.filter(pk=self.milk.pk).update(is_active=False)
 
-        response = self.search("milk")
+        response = self.client.get(
+            reverse("products"),
+            {"q": "milk", "filtered": "1", "active": "1", "inactive": "1"},
+        )
 
         self.assertEqual(self.names(response), ["Whole milk"])
         self.assertContains(response, "inactive")
@@ -133,6 +137,51 @@ class ProductSearchPageTests(ProductsPageTestCase):
 
     def test_the_search_box_keeps_what_was_typed(self):
         self.assertContains(self.search("milk"), 'value="milk"')
+
+
+class ProductActiveFilterTests(ProductsPageTestCase):
+    """The Active/Inactive tickboxes: active-only is the default, and a
+    hidden `filtered` marker (always present once the tickboxes are on the
+    page) is what tells "both unticked, on purpose" apart from "the filter
+    UI was never submitted at all", since an unticked checkbox otherwise
+    vanishes from the request just like any HTML form."""
+
+    def filter(self, **params):
+        return self.client.get(reverse("products"), {"filtered": "1", **params})
+
+    def setUp(self):
+        super().setUp()
+        Product.objects.filter(pk=self.milk.pk).update(is_active=False)
+
+    def test_only_active_products_show_by_default(self):
+        """No filter params at all -- the very first, plain page load."""
+        response = self.client.get(reverse("products"))
+
+        self.assertEqual(self.names(response), ["Napkins"])
+
+    def test_ticking_inactive_alongside_active_shows_both(self):
+        response = self.filter(active="1", inactive="1")
+
+        self.assertEqual(self.names(response), ["Napkins", "Whole milk"])
+
+    def test_inactive_only_hides_active_products(self):
+        response = self.filter(inactive="1")
+
+        self.assertEqual(self.names(response), ["Whole milk"])
+
+    def test_unticking_both_shows_nothing(self):
+        response = self.filter()
+
+        self.assertEqual(self.names(response), [])
+        self.assertContains(response, "Tick Active or Inactive")
+
+    def test_the_tickboxes_reflect_the_current_filter(self):
+        response = self.filter(inactive="1")
+
+        self.assertNotIn(
+            'name="active" value="1" checked', response.content.decode()
+        )
+        self.assertIn('name="inactive" value="1" checked', response.content.decode())
 
 
 class ProductsPageRenderingTests(ProductsPageTestCase):

@@ -63,15 +63,39 @@
         </button>
 
         {% comment %}
-          "Delete" is a deactivation: rule 3 keeps sellers as rows because
-          history points at them. Reversible, so the confirm names what will
-          actually happen rather than implying the row disappears.
+          Two different things, and the row shows whichever applies.
+
+          No products: delete it properly. A typo or an abandoned entry
+          should not linger in the list forever.
+
+          Has products: it is either in use or reaches history through them,
+          so it can only be switched off. Rule 3 keeps the row, and PROTECT
+          would refuse the delete regardless.
         {% endcomment %}
         {% if seller.is_active %}
           <button hx-post="{% url 'toggle_seller' seller.pk %}"
-                  hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-search"
+                  hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-filters"
                   hx-confirm="Deactivate {{ seller.name }}? They stay in past orders but disappear from product search."
                   aria-label="Deactivate {{ seller.name }}" title="Deactivate"
+                  class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-stone-100 hover:text-stone-900">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><path d="M12 2v10"/>
+            </svg>
+          </button>
+        {% else %}
+          <button hx-post="{% url 'toggle_seller' seller.pk %}"
+                  hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-filters"
+                  class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-[#4a7355] hover:bg-[#eef4f0] hover:text-[#3d6047]">
+            Reactivate
+          </button>
+        {% endif %}
+
+        {% if not seller.product_count %}
+          <button hx-post="{% url 'delete_seller' seller.pk %}"
+                  hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-filters"
+                  hx-confirm="Delete {{ seller.name }} for good? It has no products, so nothing is lost."
+                  aria-label="Delete {{ seller.name }}" title="Delete permanently"
                   class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-stone-400 hover:bg-red-50 hover:text-red-600">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -79,18 +103,15 @@
               <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
             </svg>
           </button>
-        {% else %}
-          <button hx-post="{% url 'toggle_seller' seller.pk %}"
-                  hx-target="#seller-list" hx-swap="outerHTML" hx-include="#seller-search"
-                  class="inline-flex min-h-11 items-center rounded-md px-3 text-sm text-[#4a7355] hover:bg-[#eef4f0] hover:text-[#3d6047]">
-            Reactivate
-          </button>
         {% endif %}
       </div>
     </div>
   {% empty %}
     <div class="px-4 py-12 text-center">
-      {% if query %}
+      {% if not show_active and not show_inactive %}
+        <p class="font-medium text-stone-700">Nothing to show</p>
+        <p class="mt-1 text-sm text-stone-500">Tick Active or Inactive above to see sellers.</p>
+      {% elif query %}
         <p class="font-medium text-stone-700">No seller matches “{{ query }}”</p>
         <p class="mt-1 text-sm text-stone-500">Try part of a name, phone number or email.</p>
       {% else %}

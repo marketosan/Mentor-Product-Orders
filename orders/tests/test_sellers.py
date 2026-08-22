@@ -53,11 +53,15 @@ class SellerSearchTests(SellerAdminTestCase):
 
     def test_inactive_sellers_still_appear(self):
         """This is the only page that can bring one back, so hiding them here
-        would strand them.
+        would strand them -- findable with the Inactive tickbox on.
         """
         Seller.objects.filter(pk=self.metro.pk).update(is_active=False)
 
-        self.assertIn("Metro Wholesale", self.names(self.search("metro")))
+        response = self.client.get(
+            reverse("sellers"), {"q": "metro", "filtered": "1", "active": "1", "inactive": "1"}
+        )
+
+        self.assertIn("Metro Wholesale", self.names(response))
 
     def test_a_miss_says_so_and_names_the_query(self):
         response = self.search("nobody")
@@ -77,6 +81,48 @@ class SellerSearchTests(SellerAdminTestCase):
 
     def test_the_search_box_keeps_what_was_typed(self):
         self.assertContains(self.search("valley"), 'value="valley"')
+
+
+class SellerActiveFilterTests(SellerAdminTestCase):
+    """The Active/Inactive tickboxes: active-only is the default. Mirrors
+    ProductActiveFilterTests -- same `filtered` marker, same reasoning."""
+
+    def filter(self, **params):
+        return self.client.get(reverse("sellers"), {"filtered": "1", **params})
+
+    def setUp(self):
+        super().setUp()
+        Seller.objects.filter(pk=self.metro.pk).update(is_active=False)
+
+    def test_only_active_sellers_show_by_default(self):
+        """No filter params at all -- the very first, plain page load."""
+        response = self.client.get(reverse("sellers"))
+
+        self.assertEqual(self.names(response), ["Green Valley Dairy"])
+
+    def test_ticking_inactive_alongside_active_shows_both(self):
+        response = self.filter(active="1", inactive="1")
+
+        self.assertEqual(self.names(response), ["Green Valley Dairy", "Metro Wholesale"])
+
+    def test_inactive_only_hides_active_sellers(self):
+        response = self.filter(inactive="1")
+
+        self.assertEqual(self.names(response), ["Metro Wholesale"])
+
+    def test_unticking_both_shows_nothing(self):
+        response = self.filter()
+
+        self.assertEqual(self.names(response), [])
+        self.assertContains(response, "Tick Active or Inactive")
+
+    def test_the_tickboxes_reflect_the_current_filter(self):
+        response = self.filter(inactive="1")
+
+        self.assertNotIn(
+            'name="active" value="1" checked', response.content.decode()
+        )
+        self.assertIn('name="inactive" value="1" checked', response.content.decode())
 
 
 class NewSellerTests(SellerAdminTestCase):
@@ -245,7 +291,11 @@ class ToggleSellerTests(SellerAdminTestCase):
 
     def test_it_keeps_the_current_search(self):
         response = self.client.post(
-            reverse("toggle_seller", args=[self.dairy.pk]), {"q": "valley"}
+            reverse("toggle_seller", args=[self.dairy.pk]),
+            # Both tickboxes on: toggling flips the dairy to inactive, and the
+            # default (active-only) filter would otherwise hide the very row
+            # this test is checking the search kept.
+            {"q": "valley", "filtered": "1", "active": "1", "inactive": "1"},
         )
 
         self.assertEqual([s.name for s in response.context["sellers"]], ["Green Valley Dairy"])

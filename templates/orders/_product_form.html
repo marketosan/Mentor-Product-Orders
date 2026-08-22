@@ -20,6 +20,9 @@
   {% endcomment %}
   <input type="hidden" name="origin" value="{{ origin }}">
   <input type="hidden" name="q" value="{{ query }}">
+  <input type="hidden" name="filtered" value="1">
+  <input type="hidden" name="active" value="{{ show_active|yesno:'1,0' }}">
+  <input type="hidden" name="inactive" value="{{ show_inactive|yesno:'1,0' }}">
 
   <h2 class="text-lg font-semibold tracking-tight">{{ title }}</h2>
   {% if product %}
