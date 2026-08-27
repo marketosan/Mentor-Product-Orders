@@ -7,6 +7,7 @@ from urllib.parse import quote
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -15,12 +16,20 @@ from accounts.decorators import shop_admin_required
 
 from .forms import AddOrderItemForm, EditOrderItemForm, ProductForm, SellerForm, UnitForm
 from .models import OrderItem, Product, Seller, Unit
+from .product_import import (
+    InvalidWorkbook,
+    build_template_workbook,
+    import_products,
+    parse_workbook,
+    workbook_to_bytes,
+)
 from .search import search_products
 
 PANEL = "orders/_panel.html"
 DASHBOARD_BODY = "orders/_dashboard_body.html"
 PRODUCT_FORM = "orders/_product_form.html"
 PRODUCT_LIST = "orders/_product_list.html"
+PRODUCT_IMPORT_FORM = "orders/_product_import_form.html"
 HISTORY_BODY = "orders/_history_body.html"
 UNIT_LIST = "orders/_unit_list.html"
 UNIT_FORM = "orders/_unit_form.html"
@@ -889,6 +898,71 @@ def delete_all_products(request):
         render(request, PRODUCT_LIST, _product_list_context(request)),
         message,
     )
+
+
+@shop_admin_required
+def download_product_template(request):
+    """The starting point for a bulk import -- headers, one example row, and
+    the exact list of units a sheet has to match.
+    """
+    content = workbook_to_bytes(build_template_workbook())
+    response = HttpResponse(
+        content,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="products-template.xlsx"'
+    return response
+
+
+@shop_admin_required
+def import_products_view(request):
+    """Bulk-add products from an admin-supplied sheet.
+
+    Validated in full before anything is written -- see product_import.py.
+    A sheet with any bad row is rejected whole, with every problem listed at
+    once, rather than half-imported with no clean way to tell what happened.
+    """
+    if request.method == "POST":
+        upload = request.FILES.get("file")
+        if upload is None:
+            return render(
+                request, PRODUCT_IMPORT_FORM,
+                {"file_error": "Choose a file to import."}, status=422,
+            )
+
+        try:
+            rows, errors = parse_workbook(upload)
+        except InvalidWorkbook:
+            return render(
+                request, PRODUCT_IMPORT_FORM,
+                {"file_error": "That doesn't look like a valid .xlsx file."}, status=422,
+            )
+
+        if errors:
+            return render(
+                request, PRODUCT_IMPORT_FORM, {"row_errors": errors}, status=422
+            )
+
+        if not rows:
+            return render(
+                request, PRODUCT_IMPORT_FORM,
+                {"file_error": "That sheet has no product rows to import."}, status=422,
+            )
+
+        result = import_products(rows, created_by=request.user)
+
+        parts = [f"{result.created_count} added"]
+        if result.sellers_created_count:
+            parts.append(f"{result.sellers_created_count} seller{'s' if result.sellers_created_count != 1 else ''} created")
+        if result.skipped_count:
+            parts.append(f"{result.skipped_count} already on the catalog, skipped")
+
+        response = render(request, PRODUCT_LIST, _product_list_context(request))
+        response["HX-Retarget"] = "#product-list"
+        response["HX-Reswap"] = "outerHTML"
+        return _trigger(response, toast={"message": ", ".join(parts)}, closeModal=True)
+
+    return render(request, PRODUCT_IMPORT_FORM, {})
 
 
 def _saved_product(request, product, origin, message=None):

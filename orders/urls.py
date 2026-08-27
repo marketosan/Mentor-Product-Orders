@@ -29,4 +29,10 @@ urlpatterns = [
     path("products/<int:pk>/toggle/", views.toggle_product, name="toggle_product"),
     path("products/<int:pk>/delete/", views.delete_product, name="delete_product"),
     path("products/delete-all/", views.delete_all_products, name="delete_all_products"),
+    path("products/import/", views.import_products_view, name="import_products"),
+    path(
+        "products/import/template/",
+        views.download_product_template,
+        name="product_import_template",
+    ),
 ]

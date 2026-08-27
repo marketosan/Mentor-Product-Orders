@@ -17,6 +17,15 @@
       Units
     </a>
 
+    <button type="button"
+            hx-get="{% url 'import_products' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="document.getElementById('modal').showModal()"
+            class="inline-flex min-h-11 items-center rounded-md border border-stone-300 px-4 text-base text-stone-600 hover:bg-stone-100 hover:text-stone-900">
+      Import
+    </button>
+
     {% comment %}
       Whole-catalog action, deliberately not scoped to the search box or the
       Active/Inactive tickboxes: it ignores whatever is shown and acts on
