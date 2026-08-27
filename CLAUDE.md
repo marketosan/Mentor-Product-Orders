@@ -33,7 +33,8 @@ Django 5.2 does not support.
 
 Everything environment-specific is read from a **`.env`** beside `manage.py`
 (gitignored; `.env.example` is the committed template). Real environment
-variables override the file. Full deployment steps: `DEPLOYMENT.md`.
+variables override the file. Full deployment steps:
+`DEPLOYMENT_PYTHONANYWHERE.md`.
 
 - **`DEBUG` defaults to False**, and with it off the app **refuses to start**
   without a `SECRET_KEY`. Both are deliberate: forgetting a setting should
@@ -42,8 +43,10 @@ variables override the file. Full deployment steps: `DEPLOYMENT.md`.
 - `ALLOWED_HOSTS` takes bare hostnames; `CSRF_TRUSTED_ORIGINS` needs the
   scheme. Getting the second wrong makes pages load and every form fail.
 - All the HTTPS-dependent settings hang off one `HTTPS` flag, off by default.
-  Turning it on before Apache serves a certificate does not warn — it makes
-  cookies secure-only and nobody can log in.
+  Turning it on before the host serves a certificate does not warn — it makes
+  cookies secure-only and nobody can log in. Not a live risk on
+  PythonAnywhere: its free HTTPS certificate is there from the start, so
+  `HTTPS=1` is correct immediately.
 - `STATIC_ROOT` + `collectstatic` are required in production: with `DEBUG` off
   Django serves no static files, so skipping it yields a working app with no
   styling at all.
@@ -61,18 +64,18 @@ variables override the file. Full deployment steps: `DEPLOYMENT.md`.
     (`NotSupportedError: MariaDB 10.6 or later is required`). Anyone reviving
     it needs a supported MariaDB *and* a driver, since `mysqlclient` wants a C
     compiler and may have no wheel for a current Python.
-- **Static files are served by WhiteNoise**, from inside the app. That is what
-  makes shared hosting possible: on cPanel there is no way to add an Apache
-  alias. The middleware must stay directly after `SecurityMiddleware`. Storage
-  is left at Django's default on purpose — a manifest storage would need
-  `collectstatic` to have run before the tests could resolve `{% static %}`.
-- **Three deployment guides, one of them live.**
-  `DEPLOYMENT_PYTHONANYWHERE.md` is the real target: free tier, public HTTPS,
-  persistent disk so SQLite is untouched. `DEPLOYMENT_CPANEL.md` (Passenger
-  imports `passenger_wsgi.py`) and `DEPLOYMENT.md` (the shop LAN; Apache proxies
-  to `serve.py`, which runs Waitress because gunicorn has no Windows support)
-  are kept for the alternatives. Django never runs *inside* Apache —
-  `mod_wsgi` is compiled and version-tied.
+- **Static files are served by WhiteNoise**, from inside the app, so there is
+  no separate static-files mapping to configure on the host. The middleware
+  must stay directly after `SecurityMiddleware`. Storage is left at Django's
+  default on purpose — a manifest storage would need `collectstatic` to have
+  run before the tests could resolve `{% static %}`.
+- **One deployment guide: `DEPLOYMENT_PYTHONANYWHERE.md`.** Free tier, public
+  HTTPS, persistent disk so SQLite is untouched. Two other destinations were
+  tried and dropped — a cPanel host (via Passenger) and a machine on the shop's
+  own network (via Apache and Waitress, since gunicorn has no Windows support)
+  — and their guides were deleted on 2026-08-27 once PythonAnywhere became the
+  only one actually in use; anyone reviving either path can rebuild the guide
+  from an earlier commit.
   - The shop has **no machine to host this on**, and Hostinger's shared plans
     (hPanel, Premium / Cloud Startup) are PHP-only with no Python runtime, so
     the LAN and cPanel paths both turned out to be dead ends. Established
@@ -81,10 +84,6 @@ variables override the file. Full deployment steps: `DEPLOYMENT.md`.
     fallbacks if a host is older: Django 5.2 LTS covers 3.10–3.13, Django 4.2
     LTS covers 3.8–3.12. Moving back is not a version bump — every feature was
     built against 6, so the suite has to be run against the older release.
-- On cPanel the code lives outside `public_html` and `DB_NAME` points outside
-  the app directory. Both matter: anything under `public_html` is downloadable,
-  including `db.sqlite3`, and a database inside the repo is one `git pull` away
-  from trouble.
 
 ## Design constraints
 

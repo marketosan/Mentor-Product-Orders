@@ -30,7 +30,7 @@
       </div>
 
       <input type="number" name="quantity" id="quantity" step="0.001" min="0" placeholder="Qty"
-             class="w-28 rounded-md border border-stone-300 px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
+             class="w-32 rounded-md border border-stone-300 px-3 py-2.5 text-base focus:border-[#71a07c] focus:outline-none">
 
       {# min-h-11 gives the label a thumb-sized hit area, not just the 16px box. #}
       <label class="flex min-h-11 cursor-pointer items-center gap-2 text-sm select-none">
@@ -84,7 +84,7 @@
 
           <input type="number" name="quantity" step="0.001" min="0" value="{{ item.quantity|floatformat:'-3' }}"
                  autofocus
-                 class="w-28 rounded-md border border-stone-300 px-3 py-2 text-base focus:border-[#71a07c] focus:outline-none">
+                 class="w-32 rounded-md border border-stone-300 px-3 py-2 text-base focus:border-[#71a07c] focus:outline-none">
           <span class="text-sm text-stone-500">{{ item.product.unit }}</span>
 
           <label class="flex cursor-pointer items-center gap-2 text-sm select-none">

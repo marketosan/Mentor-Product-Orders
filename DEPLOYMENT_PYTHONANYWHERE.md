@@ -93,10 +93,9 @@ HTTPS=1
 
 Save with `Ctrl+O`, Enter, then `Ctrl+X`.
 
-`HTTPS=1` is correct from the start here, unlike the other guides — free
-PythonAnywhere accounts get a working HTTPS certificate on the
-`.pythonanywhere.com` address automatically, so there is no window where the
-setting is ahead of reality.
+`HTTPS=1` is correct from the start here — free PythonAnywhere accounts get a
+working HTTPS certificate on the `.pythonanywhere.com` address automatically,
+so there is no window where the setting is ahead of reality.
 
 Then make the folder for the database. It sits **outside** the repo on purpose,
 so a `git pull` can never touch it:
@@ -167,10 +166,6 @@ application = get_wsgi_application()
 ```
 
 Save it.
-
-This file does the same job as `passenger_wsgi.py` does on cPanel;
-PythonAnywhere just keeps it outside your project. `passenger_wsgi.py` is
-unused here and harmless.
 
 ## 8. Start it
 
