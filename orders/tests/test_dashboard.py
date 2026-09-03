@@ -691,7 +691,7 @@ class OrderMessageTests(DashboardTestCase):
     def test_urgent_items_say_so(self):
         self.item(self.milk, "24", urgency=OrderItem.Urgency.HIGH)
 
-        self.assertIn("sos", self.message_for(self.dairy))
+        self.assertIn("SOS", self.message_for(self.dairy))
 
     def test_ordinary_items_do_not(self):
         self.item(self.milk, "24")

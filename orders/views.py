@@ -195,7 +195,7 @@ def _order_message(items):
     for item in items:
         name = item.product.order_name or item.product.name
         urgent = " SOS" if item.urgency == OrderItem.Urgency.HIGH else ""
-        lines.append(f"• {_format_quantity(item.quantity)} {item.unit_display} {name} {urgent}")
+        lines.append(f"• {_format_quantity(item.quantity)} {item.unit_display} {name}{urgent}")
     lines += ["", ORDER_SIGNOFF]
     return "\n".join(lines)
 
