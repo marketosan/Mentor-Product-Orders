@@ -305,9 +305,14 @@ Both agreed with the user:
   use the frozen `unit_price_snapshot`, never the live catalog price.
 - **Tapping the seller's phone number copies that supplier's whole order and
   opens their Viber chat**, so sending is one paste rather than a contact
-  search. `_order_message` builds the text: products named `order_name or
-  name`, urgent items flagged, quantities stripped of trailing zeros, prices
-  left out — it says what the shop wants, not what it expects to pay.
+  search. `_order_message` builds the text to read like a message a person
+  typed: a greeting that depends on the time of day (`_order_greeting` —
+  Καλημέρα before 1pm local time, Καλησπέρα from 1pm on, plus "και καλή
+  βδομάδα" on a Monday), one bulleted `• <quantity> <unit> <name>` line per
+  item — products named `order_name or name`, urgent items flagged,
+  quantities stripped of trailing zeros — and a closing `Ευχαριστώ`. Prices
+  are left out throughout — it says what the shop wants, not what it expects
+  to pay.
   - **Viber has no scheme carrying both a recipient and text.**
     `viber://chat?number=` opens the right chat and silently drops any text;
     `viber://forward?text=` carries text but asks which chat. That is why

@@ -2,6 +2,8 @@
 
 import json
 from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import patch
 from urllib.parse import quote
 
 from django.contrib.auth import get_user_model
@@ -11,7 +13,7 @@ from django.utils import timezone
 from django.utils.html import escape
 
 from orders.models import OrderItem, Product, Seller, Unit
-from orders.views import ORDER_GREETING
+from orders.views import ORDER_SIGNOFF
 
 User = get_user_model()
 
@@ -617,36 +619,40 @@ class OrderMessageTests(DashboardTestCase):
 
         message = self.message_for(self.dairy)
 
-        self.assertIn(ORDER_GREETING, message)
-        self.assertIn("Whole milk: 24 l", message)
-        self.assertIn("Oat milk: 12 l", message)
+        self.assertIn("• 24 l Whole milk", message)
+        self.assertIn("• 12 l Oat milk", message)
 
-    def test_items_are_numbered_from_one(self):
-        """`<n>. <name>: <quantity> <unit>` -- a numbered list reads back over
-        the phone and gives the supplier something to confirm against.
-        """
+    def test_it_opens_with_a_greeting_and_closes_with_a_thank_you(self):
+        self.item(self.milk, "24")
+
+        lines = self.message_for(self.dairy).splitlines()
+
+        self.assertIn(lines[0], ("Καλημέρα!", "Καλησπέρα!"))
+        self.assertEqual(lines[-1], ORDER_SIGNOFF)
+
+    def test_bullets_read_quantity_then_unit_then_name(self):
         self.item(self.milk, "24")
         self.item(self.oat, "12")
 
         lines = self.message_for(self.dairy).splitlines()[2:]
 
-        self.assertEqual(lines[0], "1. Oat milk: 12 l")
-        self.assertEqual(lines[1], "2. Whole milk: 24 l")
+        self.assertEqual(lines[0], "• 12 l Oat milk")
+        self.assertEqual(lines[1], "• 24 l Whole milk")
 
-    def test_the_numbering_follows_the_order_shown_on_screen(self):
-        """Urgent first, so the numbers match what the admin is looking at."""
+    def test_bullet_order_follows_the_order_shown_on_screen(self):
+        """Urgent first, so the bullets match what the admin is looking at."""
         self.item(self.milk, "24")
         self.item(self.oat, "12", urgency=OrderItem.Urgency.HIGH)
 
         lines = self.message_for(self.dairy).splitlines()[2:]
 
-        self.assertTrue(lines[0].startswith("1. Oat milk"))
-        self.assertTrue(lines[1].startswith("2. Whole milk"))
+        self.assertTrue(lines[0].startswith("• 12 l Oat milk"))
+        self.assertTrue(lines[1].startswith("• 24 l Whole milk"))
 
-    def test_a_single_item_is_still_numbered(self):
+    def test_a_single_item_still_gets_a_bullet(self):
         self.item(self.milk, "24")
 
-        self.assertIn("1. Whole milk: 24 l", self.message_for(self.dairy))
+        self.assertIn("• 24 l Whole milk", self.message_for(self.dairy))
 
     def test_it_covers_only_that_seller(self):
         self.item(self.milk, "24")
@@ -660,7 +666,7 @@ class OrderMessageTests(DashboardTestCase):
 
         message = self.message_for(self.metro)
 
-        self.assertIn("1. NAP-2PLY-250: 2 boxes", message)
+        self.assertIn("• 2 boxes NAP-2PLY-250", message)
         self.assertNotIn("Napkins", message)
 
     def test_the_unit_pluralizes_when_more_than_one(self):
@@ -668,14 +674,14 @@ class OrderMessageTests(DashboardTestCase):
 
         lines = self.message_for(self.metro).splitlines()[2:]
 
-        self.assertEqual(lines[0], "1. NAP-2PLY-250: 2 boxes")
+        self.assertEqual(lines[0], "• 2 boxes NAP-2PLY-250")
 
     def test_the_unit_stays_singular_for_exactly_one(self):
         self.item(self.napkins, "1")
 
         lines = self.message_for(self.metro).splitlines()[2:]
 
-        self.assertEqual(lines[0], "1. NAP-2PLY-250: 1 box")
+        self.assertEqual(lines[0], "• 1 box NAP-2PLY-250")
 
     def test_it_falls_back_to_the_shop_name(self):
         self.item(self.milk, "24")
@@ -685,7 +691,7 @@ class OrderMessageTests(DashboardTestCase):
     def test_urgent_items_say_so(self):
         self.item(self.milk, "24", urgency=OrderItem.Urgency.HIGH)
 
-        self.assertIn("(urgent)", self.message_for(self.dairy))
+        self.assertIn("sos", self.message_for(self.dairy))
 
     def test_ordinary_items_do_not(self):
         self.item(self.milk, "24")
@@ -727,7 +733,7 @@ class OrderMessageTests(DashboardTestCase):
         url = response.context["groups"][0]["viber_forward_url"]
 
         self.assertTrue(url.startswith("viber://forward?text="))
-        self.assertIn(quote(ORDER_GREETING, safe=""), url)
+        self.assertIn(quote(ORDER_SIGNOFF, safe=""), url)
         # Newlines have to be escaped or the URL ends at the first one.
         self.assertNotIn("\n", url)
         self.assertIn("%0A", url)
@@ -767,6 +773,55 @@ class OrderMessageTests(DashboardTestCase):
         # Green Valley has a number, so copy-and-chat; Metro has none, so picker.
         self.assertIn(escape(self.dairy.viber_url), markup)
         self.assertIn("viber://forward?text=", markup)
+
+    def local_time(self, hour, weekday=1):
+        """Fake `timezone.localtime()` returning just enough to read `.hour`
+        and `.weekday()` off -- the greeting looks at nothing else.
+        `weekday` defaults to Tuesday, so hour-only tests don't accidentally
+        land on the Monday case.
+        """
+        fake_now = SimpleNamespace(hour=hour, weekday=lambda: weekday)
+        return patch("orders.views.timezone.localtime", return_value=fake_now)
+
+    def test_the_greeting_is_morning_right_up_to_one_pm(self):
+        self.item(self.milk, "24")
+
+        with self.local_time(12):
+            message = self.message_for(self.dairy)
+
+        self.assertTrue(message.startswith("Καλημέρα"))
+
+    def test_the_greeting_switches_to_afternoon_at_one_pm(self):
+        self.item(self.milk, "24")
+
+        with self.local_time(13):
+            message = self.message_for(self.dairy)
+
+        self.assertTrue(message.startswith("Καλησπέρα"))
+
+    def test_monday_adds_a_good_week_wish(self):
+        self.item(self.milk, "24")
+
+        with self.local_time(12, weekday=0):
+            message = self.message_for(self.dairy)
+
+        self.assertTrue(message.startswith("Καλημέρα και καλή βδομάδα"))
+
+    def test_the_week_wish_still_follows_the_time_of_day(self):
+        self.item(self.milk, "24")
+
+        with self.local_time(13, weekday=0):
+            message = self.message_for(self.dairy)
+
+        self.assertTrue(message.startswith("Καλησπέρα και καλή βδομάδα"))
+
+    def test_other_days_get_no_week_wish(self):
+        self.item(self.milk, "24")
+
+        with self.local_time(12, weekday=1):
+            message = self.message_for(self.dairy)
+
+        self.assertEqual(message.splitlines()[0], "Καλημέρα!")
 
 
 class DashboardRenderingTests(DashboardTestCase):
@@ -847,8 +902,8 @@ class DashboardRenderingTests(DashboardTestCase):
 
         markup = self.client.get(reverse("dashboard")).content.decode()
 
-        self.assertIn(escape(ORDER_GREETING), markup)
-        self.assertIn(escape("1. Whole milk: 24 l"), markup)
+        self.assertIn(escape(ORDER_SIGNOFF), markup)
+        self.assertIn(escape("• 24 l Whole milk"), markup)
 
     def test_the_page_loads_the_script_that_does_the_copying(self):
         response = self.client.get(reverse("dashboard"))

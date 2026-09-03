@@ -34,9 +34,10 @@ HISTORY_BODY = "orders/_history_body.html"
 UNIT_LIST = "orders/_unit_list.html"
 UNIT_FORM = "orders/_unit_form.html"
 
-# Opens the order message. Greek, because it is read by the supplier, not
-# by anyone using the app.
-ORDER_GREETING = "Θα ήθελα να παραγγείλω τα παρακάτω:"
+# Closes the order message. Greek, because it is read by the supplier, not
+# by anyone using the app. The opening greeting depends on the time of day --
+# see _order_greeting.
+ORDER_SIGNOFF = "Ευχαριστώ"
 
 
 def _trigger(response, **events):
@@ -166,25 +167,36 @@ def _format_quantity(quantity):
     return f"{quantity:.3f}".rstrip("0").rstrip(".") or "0"
 
 
+def _order_greeting():
+    """Καλημέρα before 1pm local time, Καλησπέρα from 1pm on -- the supplier
+    reads this in their own chat, so it follows the time they'll see it. On a
+    Monday it adds "και καλή βδομάδα", since that is the first order of the
+    week.
+    """
+    now = timezone.localtime()
+    greeting = "Καλημέρα" if now.hour < 13 else "Καλησπέρα"
+    return f"{greeting} και καλή βδομάδα" if now.weekday() == 0 else greeting + '!'
+
+
 def _order_message(items):
     """The order written out, ready to send to the supplier.
 
-    One numbered line per item, `<n>. <name>: <quantity> <unit>`. The name is
-    the seller's own where `order_name` is set -- that is the whole reason the
-    field exists -- and the shop's name where it is not, with nothing else
-    tacked on either way.
+    A time-of-day greeting, one bulleted `<quantity> <unit> <name>` line per
+    item, and a closing thank-you -- reads like a message a person typed, not
+    a numbered form. The name is the seller's own where `order_name` is set --
+    that is the whole reason the field exists -- and the shop's name where it
+    is not.
 
     The seller is not named in the message: it is sent to them, in their own
     chat. Prices are left out too -- this says what the shop wants, not what it
     expects to pay.
     """
-    lines = [ORDER_GREETING, ""]
-    for position, item in enumerate(items, start=1):
+    lines = [_order_greeting(), ""]
+    for item in items:
         name = item.product.order_name or item.product.name
-        urgent = " (urgent)" if item.urgency == OrderItem.Urgency.HIGH else ""
-        lines.append(
-            f"{position}. {name}: {_format_quantity(item.quantity)} {item.unit_display}{urgent}"
-        )
+        urgent = " SOS" if item.urgency == OrderItem.Urgency.HIGH else ""
+        lines.append(f"• {_format_quantity(item.quantity)} {item.unit_display} {name} {urgent}")
+    lines += ["", ORDER_SIGNOFF]
     return "\n".join(lines)
 
 
