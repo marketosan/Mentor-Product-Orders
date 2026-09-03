@@ -19,9 +19,27 @@
 {% comment %}
   Buttons that post from outside a <form> -- delete, for one -- have no CSRF
   token of their own, so every htmx request carries it as a header instead.
+  hx-indicator is likewise set once here rather than on every triggering
+  element: it cascades to every htmx request in the app, toggling the spinner
+  below via the opacity/`htmx-request` CSS htmx injects by default.
 {% endcomment %}
 <body class="min-h-screen bg-stone-100 text-stone-900"
-      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+      hx-indicator="#page-loading">
+
+{% comment %}
+  Shown for the length of any htmx request -- search, add/edit/delete,
+  dashboard filtering, paging -- so a slow connection doesn't look like a
+  stuck page. Fixed in a corner rather than over the content, since it can
+  fire mid-typing (product search) as well as mid-click.
+{% endcomment %}
+<div id="page-loading" class="htmx-indicator fixed top-3 right-3 z-50" aria-hidden="true">
+  <svg class="h-6 w-6 animate-spin text-[#4a7355]" viewBox="0 0 24 24" fill="none">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+    <path class="opacity-75" fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+  </svg>
+</div>
 
 {% if user.is_authenticated %}
 <header class="border-b-2 border-[#71a07c] bg-white">
