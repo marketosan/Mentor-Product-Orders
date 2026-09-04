@@ -49,9 +49,14 @@ class UserFormBase(_PasswordFieldsMixin, forms.ModelForm):
         self.editor = editor
 
     def clean_email(self):
-        # Unique on the model, but case-sensitively; two accounts differing only
-        # in capitalisation would be one mailbox in practice.
-        email = self.cleaned_data["email"].strip()
+        # Optional -- stored as None rather than "" so two blank accounts
+        # don't collide under the unique constraint. Filled in, it is still
+        # unique, but case-insensitively; two accounts differing only in
+        # capitalisation would be one mailbox in practice.
+        email = (self.cleaned_data.get("email") or "").strip()
+        if not email:
+            return None
+
         clash = User.objects.filter(email__iexact=email)
         if self.instance.pk:
             clash = clash.exclude(pk=self.instance.pk)

@@ -149,6 +149,24 @@ class NewUserTests(UserAdminTestCase):
         self.assertEqual(response.status_code, 422)
         self.assertFalse(User.objects.filter(username="eleni").exists())
 
+    def test_email_is_optional(self):
+        response = self.create(email="")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(User.objects.get(username="eleni").email)
+
+    def test_two_accounts_can_both_go_without_an_email(self):
+        """A blank email is stored as NULL, not "" -- otherwise a second
+        blank account would trip the same unique constraint that catches a
+        real duplicate.
+        """
+        self.create(email="")
+
+        response = self.create(username="kostas", email="")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(User.objects.filter(username="kostas").exists())
+
     def test_a_duplicate_username_is_rejected(self):
         response = self.create(username="maria", email="other@example.com")
 
@@ -254,6 +272,12 @@ class EditUserTests(UserAdminTestCase):
     def test_an_unknown_user_is_a_404(self):
         self.assertEqual(self.client.get(reverse("edit_user", args=[999999])).status_code, 404)
 
+    def test_the_email_can_be_cleared(self):
+        self.edit(self.maria, email="")
+
+        self.maria.refresh_from_db()
+        self.assertIsNone(self.maria.email)
+
 
 class ToggleUserTests(UserAdminTestCase):
     def toggle(self, account, data=None):
@@ -353,3 +377,10 @@ class UserListRenderingTests(UserAdminTestCase):
 
         for marker in ("{#", "#}", "{%", "%}"):
             self.assertNotIn(marker, markup)
+
+    def test_an_account_without_an_email_gets_no_dead_mailto_link(self):
+        User.objects.all().update(email=None)
+
+        markup = self.client.get(reverse("users")).content.decode()
+
+        self.assertNotIn("mailto:", markup)

@@ -29,7 +29,7 @@
 
     <div>
       <label for="u-email" class="block text-sm font-medium">Email</label>
-      <input type="email" name="email" id="u-email" required autocomplete="off"
+      <input type="email" name="email" id="u-email" autocomplete="off"
              value="{{ form.email.value|default:'' }}"
              class="mt-1 w-full rounded-md border border-stone-300 px-3 py-3 text-base focus:border-[#71a07c] focus:outline-none">
       {% for error in form.email.errors %}

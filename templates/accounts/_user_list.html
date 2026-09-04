@@ -30,10 +30,12 @@
         </div>
 
         <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-          <a href="mailto:{{ account.email }}"
-             class="text-[#4a7355] underline underline-offset-2 hover:text-[#3d6047]">
-            {{ account.email }}
-          </a>
+          {% if account.email %}
+            <a href="mailto:{{ account.email }}"
+               class="text-[#4a7355] underline underline-offset-2 hover:text-[#3d6047]">
+              {{ account.email }}
+            </a>
+          {% endif %}
           <span class="text-stone-400">
             {{ account.request_count }} item{{ account.request_count|pluralize }} requested
           </span>

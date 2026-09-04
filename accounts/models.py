@@ -14,7 +14,10 @@ class User(AbstractUser):
         EMPLOYEE = "employee", "Employee"
         ADMIN = "admin", "Admin"
 
-    email = models.EmailField(unique=True)
+    # null (not just blank) so a second blank email doesn't collide with the
+    # first under the unique constraint -- SQLite's unique index ignores NULLs
+    # but treats "" as a real, colliding value.
+    email = models.EmailField(unique=True, blank=True, null=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.EMPLOYEE)
 
     @property
@@ -32,6 +35,14 @@ class User(AbstractUser):
 
     def is_last_admin(self) -> bool:
         return self.is_shop_admin and self.is_active and not self.other_active_admins(self.pk).exists()
+
+    def clean(self):
+        """`AbstractUser.clean()` runs the email through `normalize_email`,
+        which turns None into "" -- undoing the None a blank email is stored
+        as, and reintroducing a false clash with every other blank account.
+        """
+        super().clean()
+        self.email = self.email or None
 
     def __str__(self) -> str:
         return self.username
